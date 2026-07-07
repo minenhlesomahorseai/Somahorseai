@@ -57,45 +57,45 @@ const VALUES = [
 
 const TEAM = [
   {
-    name: "Eric",
+    name: "Placeholder",
     role: "Founder & CEO",
     bio: "Systems architect behind the Somahorse vision — turning plain-language agricultural problems into funded, running software.",
-    initials: "ER",
+    initials: "PH",
     accent: "from-blue-vivid to-blue-sky",
   },
   {
-    name: "Naledi",
+    name: "Placeholder",
     role: "Head of AI Engineering",
     bio: "Leads the scoping and matching engine that translates client briefs into structured, priced project milestones.",
-    initials: "NA",
+    initials: "PH",
     accent: "from-violet-500 to-blue-vivid",
   },
   {
-    name: "Kwame",
+    name: "Placeholder",
     role: "Platform Lead",
     bio: "Owns the delivery pipeline — escrow, milestone tracking, and the automated DevOps loop developers rely on.",
-    initials: "KW",
+    initials: "PH",
     accent: "from-emerald-500 to-teal-400",
   },
   {
-    name: "Amara",
+    name: "Placeholder",
     role: "Head of Talent Network",
     bio: "Curates and certifies our engineer network, running the technical sandbox and live review pipeline.",
-    initials: "AM",
+    initials: "PH",
     accent: "from-amber-500 to-orange-400",
   },
   {
-    name: "Tunde",
+    name: "Placeholder",
     role: "Agri Supply-Chain Lead",
     bio: "Former logistics operator who keeps our products honest — from weighbridge tickets to cold-chain telemetry.",
-    initials: "TU",
+    initials: "PH",
     accent: "from-sky-500 to-cyan-400",
   },
   {
-    name: "Zanele",
+    name: "Placeholder",
     role: "Design & Experience",
     bio: "Designs the interfaces that make heavy agricultural software feel effortless on a farm phone or a boardroom screen.",
-    initials: "ZA",
+    initials: "PH",
     accent: "from-pink-500 to-violet-400",
   },
 ] as const;
@@ -236,7 +236,7 @@ export default async function AboutPage() {
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {TEAM.map((member) => (
                 <div
-                  key={member.name}
+                  key={member.role}
                   className="about-glass group rounded-3xl p-7 text-center transition duration-300 hover:-translate-y-1"
                 >
                   <span
