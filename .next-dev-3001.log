@@ -1,0 +1,9 @@
+
+> somahorse-ai@0.1.0 dev
+> next dev -p 3001
+
+▲ Next.js 16.2.9 (Turbopack)
+- Local:         http://localhost:3001
+- Network:       http://10.99.11.28:3001
+✓ Ready in 1054ms
+[?25h

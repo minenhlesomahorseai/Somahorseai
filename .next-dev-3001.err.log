@@ -1,0 +1,8 @@
+⨯ Another next dev server is already running.
+
+- Local:        http://localhost:3000
+- PID:          7008
+- Dir:          C:\Users\minen\OneDrive\Desktop\Somahorseai\somahorse-ai
+- Log:          .next\dev\logs\next-development.log
+
+Run taskkill /PID 7008 /F to stop it.
