@@ -451,8 +451,7 @@ function TypingDots() {
 function AiNotReady() {
   return (
     <div className="rounded-2xl border border-accent-amber/30 bg-accent-amber/10 p-4 text-sm text-accent-amber">
-      The AI intake agent isn&apos;t configured yet. Add a <code className="font-mono">GEMINI_API_KEY</code>{" "}
-      or <code className="font-mono">OPENAI_API_KEY</code> to enable the conversation.
+      The AI intake agent isn&apos;t configured yet. Add a <code className="font-mono">GEMINI_API_KEY</code> to enable the conversation.
     </div>
   );
 }

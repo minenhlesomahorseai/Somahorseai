@@ -11,7 +11,7 @@ interface FAQItem {
 const FAQS: FAQItem[] = [
   {
     question: "What tech stack do Somahorse developers use?",
-    answer: "We primarily build with modern, scalable stacks. This includes Next.js, React, TypeScript, TailwindCSS, Node.js, Python (FastAPI/Django), and PostgreSQL. Many projects also involve integrating AI models (like Gemini, GPT-4, and Claude) and handling offline-first local database synchronizations for remote agricultural areas.",
+    answer: "We primarily build with modern, scalable stacks. This includes Next.js, React, TypeScript, TailwindCSS, Node.js, Python (FastAPI/Django), and PostgreSQL. Many projects also involve integrating AI models (like Gemini and Claude) and handling offline-first local database synchronizations for remote agricultural areas.",
   },
   {
     question: "How do milestones and payments work?",

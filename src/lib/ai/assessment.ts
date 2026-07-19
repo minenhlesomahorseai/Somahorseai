@@ -5,7 +5,7 @@ import type {
   AssessmentQuestionType,
 } from "@/lib/auth/types";
 
-import { completeOpenAiJson } from "./openai";
+import { completeGeminiJson } from "./gemini-json";
 
 export interface CandidateProfile {
   fullName: string | null;
@@ -61,7 +61,7 @@ function normalizeType(raw: string): AssessmentQuestionType | null {
 }
 
 /**
- * Generates a unique 10-question assessment for a candidate using OpenAI:
+ * Generates a unique 10-question assessment for a candidate using Gemini:
  * 3 multiple-choice, 3 scenario "pick the best response", 4 open problem/solution.
  */
 export async function generateAssessmentQuestions(
@@ -94,7 +94,7 @@ Return JSON of exactly this shape:
   ]
 }`;
 
-  const result = await completeOpenAiJson<GenerationResult>({
+  const result = await completeGeminiJson<GenerationResult>({
     system,
     user,
     temperature: 0.8,
@@ -163,7 +163,7 @@ function answerText(
 }
 
 /**
- * Grades a submitted assessment with OpenAI. Each question is scored out of 10,
+ * Grades a submitted assessment with Gemini. Each question is scored out of 10,
  * so the total is a clean 0-100. Returns per-question evaluation plus an overall
  * verdict and a pass/borderline/fail recommendation for the admin.
  */
@@ -200,7 +200,7 @@ Return JSON of exactly this shape:
   "recommendation": "pass"
 }`;
 
-  const result = await completeOpenAiJson<GradingResult>({
+  const result = await completeGeminiJson<GradingResult>({
     system,
     user,
     temperature: 0.2,

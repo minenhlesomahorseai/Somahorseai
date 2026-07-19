@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUpRight, LayoutDashboard, Menu, ShieldCheck, UserRound, X } from "lucide-react";
+import { ArrowRight, LayoutDashboard, Loader2, LogOut, Menu, UserRound, X } from "lucide-react";
 import { AnimatePresence, motion, useMotionValueEvent, useScroll } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
@@ -47,205 +47,248 @@ export function FloatingNav({ user = null }: { user?: MarketingUser | null }) {
       initial={{ y: -28, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.6, ease: EASE }}
-      className="fixed inset-x-0 top-0 z-50 px-3 pt-3 sm:px-4 sm:pt-4"
+      className="fixed inset-x-0 top-0 z-[1000] flex justify-center px-3 pt-3 sm:px-4 sm:pt-4"
     >
-      <nav
-        aria-label="Primary"
+      {/* ── Desktop nav bar ── */}
+      <div
         className={[
-          "mx-auto flex w-full max-w-5xl items-center justify-between gap-3 rounded-full border px-3 py-2 transition-[background-color,box-shadow,border-color] duration-300",
+          "flex items-center w-full relative transition-all duration-300",
           scrolled
-            ? "border-border bg-white/85 shadow-nav backdrop-blur-xl"
-            : "border-border/60 bg-white/65 shadow-soft backdrop-blur-md",
+            ? "max-w-5xl rounded-full border border-border bg-white/85 shadow-nav backdrop-blur-xl px-3 py-2"
+            : "max-w-[1400px] border-transparent px-3 py-2",
         ].join(" ")}
       >
-        <Link href="/" className="flex shrink-0 items-center gap-2 pl-1">
+        {/* Logo */}
+        <Link
+          href="/"
+          className="focus:outline-none rounded-full transition-transform hover:scale-105 flex items-center gap-2.5 shrink-0"
+        >
           <Image
             src="/somahorse-logo.png"
             alt="Somahorse.ai"
-            width={34}
-            height={34}
-            className="size-8 rounded-full object-contain"
+            width={36}
+            height={36}
+            className="size-9 rounded-full object-contain cursor-pointer"
             priority
           />
-          <span className="font-display text-[15px] font-bold tracking-tight text-navy">
+          <span className="text-[15px] font-bold hidden sm:inline transition-colors text-navy">
             Somahorse<span className="text-blue-vivid">.ai</span>
           </span>
         </Link>
 
-        <ul className="hidden items-center gap-1.5 lg:flex">
-          {NAV.map((item) => (
-            <li key={item.href} className="px-1">
-              <Link
-                href={item.href}
-                className="relative py-1.5 text-sm font-semibold text-muted-foreground transition-colors hover:text-navy group font-ui"
+        {/* Center nav links */}
+        <nav className="hidden md:flex h-full ml-auto mr-auto" aria-label="Main navigation">
+          <ul className="flex h-full items-center gap-1">
+            {NAV.map((item, i) => (
+              <motion.li
+                key={item.href}
+                className="relative"
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 + i * 0.05, duration: 0.5, ease: EASE }}
               >
-                {item.label}
-                <span className={`absolute left-0 -bottom-0.5 h-[2px] w-full rounded-full bg-blue-vivid transition-all duration-300 origin-center ${
-                  pathname === item.href
-                    ? "scale-x-100 opacity-100"
-                    : "scale-x-0 opacity-0 group-hover:scale-x-100 group-hover:opacity-100"
-                }`} />
-              </Link>
-            </li>
-          ))}
-          <li>
-            <Link
-              href="#protection"
-              className="ml-1 flex items-center gap-1.5 rounded-full bg-blue-light px-3 py-1.5 text-sm font-semibold text-navy-mid ring-1 ring-navy-mid/15 transition hover:bg-blue-vivid/15 font-ui"
-            >
-              <ShieldCheck className="size-3.5" aria-hidden />
-              Protection
-              <ArrowUpRight className="size-3" aria-hidden />
-            </Link>
-          </li>
-        </ul>
+                <Link
+                  href={item.href}
+                  className={[
+                    "text-[13px] font-medium transition-colors focus:outline-none px-3.5 py-1.5 relative",
+                    pathname === item.href
+                      ? "text-navy"
+                      : "text-muted-foreground hover:text-navy",
+                  ].join(" ")}
+                >
+                  {item.label}
+                </Link>
+              </motion.li>
+            ))}
+          </ul>
+        </nav>
 
-        {user ? (
-          <div className="hidden items-center gap-2 lg:flex">
-            {user.startProjectPath ? (
+        {/* Right side actions */}
+        <div className="flex items-center gap-2.5 ml-auto md:ml-0 shrink-0">
+          {user ? (
+            <div className="hidden items-center gap-2 md:flex">
+              {user.startProjectPath ? (
+                <Link
+                  href={user.startProjectPath}
+                  className="inline-flex items-center gap-1.5 px-4 py-1.5 text-[13px] font-medium bg-navy-mid text-white rounded-full hover:bg-navy transition-all focus:outline-none"
+                >
+                  Start a project
+                </Link>
+              ) : (
+                <Link
+                  href={user.dashboardPath}
+                  className="flex items-center gap-1.5 inline-flex items-center gap-1.5 px-4 py-1.5 text-[13px] font-medium bg-navy-mid text-white rounded-full hover:bg-navy transition-all focus:outline-none"
+                >
+                  <LayoutDashboard className="size-4" aria-hidden />
+                  {dashboardLabel}
+                </Link>
+              )}
+              <UserChip user={user} />
+            </div>
+          ) : (
+            <motion.div
+              className="hidden md:block relative"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.4, duration: 0.5, ease: EASE }}
+            >
               <Link
-                href={user.startProjectPath}
-                className="rounded-full bg-navy-mid px-4 py-2 text-sm font-semibold text-white shadow-glow transition hover:bg-navy font-ui"
+                href="/login"
+                className="inline-flex items-center gap-1.5 px-4 py-1.5 text-[13px] font-medium bg-navy-mid text-white rounded-full hover:bg-navy transition-all focus:outline-none"
               >
-                Start a project
+                Sign in
               </Link>
-            ) : (
-              <Link
-                href={user.dashboardPath}
-                className="flex items-center gap-1.5 rounded-full bg-navy-mid px-4 py-2 text-sm font-semibold text-white shadow-glow transition hover:bg-navy font-ui"
-              >
-                <LayoutDashboard className="size-4" aria-hidden />
-                {dashboardLabel}
-              </Link>
-            )}
-            <UserChip user={user} />
+            </motion.div>
+          )}
+
+          {/* Mobile hamburger */}
+          <div className="md:hidden">
+            <motion.button
+              type="button"
+              onClick={() => setOpen(true)}
+              aria-label="Open menu"
+              className="transition-all hover:opacity-80 active:scale-90 focus:outline-none rounded-full p-2 hover:bg-white/40"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3 }}
+            >
+              <Menu className="h-5 w-5 text-navy" aria-hidden />
+            </motion.button>
           </div>
-        ) : (
-          <div className="hidden items-center gap-1.5 lg:flex">
-            <Link
-              href="/login"
-              className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium text-muted-foreground transition hover:text-navy font-ui"
-            >
-              <UserRound className="size-4" aria-hidden />
-              Sign in
-            </Link>
-            <Link
-              href={isDevPage ? "/signup?role=developer" : "/signup"}
-              className="rounded-full bg-navy-mid px-4 py-2 text-sm font-semibold text-white shadow-glow transition hover:bg-navy font-ui"
-            >
-              Sign up
-            </Link>
-          </div>
-        )}
+        </div>
+      </div>
 
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          aria-label="Open menu"
-          className="grid size-9 place-items-center rounded-full text-navy transition hover:bg-blue-mist lg:hidden"
-        >
-          <Menu className="size-5" aria-hidden />
-        </button>
-      </nav>
-
+      {/* ── Mobile full-screen overlay menu (Olyxee style) ── */}
       <AnimatePresence>
         {open && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-white/97 backdrop-blur-xl lg:hidden"
+            transition={{ duration: 0.3 }}
+            className="fixed inset-0 z-50 mobile-menu-glass md:hidden"
           >
-            <div className="flex items-center justify-between p-5">
-              <Link href="/" onClick={() => setOpen(false)} className="flex items-center gap-2">
-                <Image src="/somahorse-logo.png" alt="" width={34} height={34} className="size-8 rounded-full object-contain" />
-                <span className="font-display text-lg font-bold text-navy">
-                  Somahorse<span className="text-blue-vivid">.ai</span>
-                </span>
-              </Link>
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                aria-label="Close menu"
-                className="grid size-10 place-items-center rounded-xl border border-border"
-              >
-                <X className="size-5" aria-hidden />
-              </button>
-            </div>
-
-            {user ? (
-              <div className="mx-5 mb-2 flex items-center gap-3 rounded-2xl border border-border bg-blue-mist/60 p-4">
-                <Avatar initials={user.initials} className="size-11 text-sm" />
-                <div className="min-w-0">
-                  <p className="truncate font-ui text-sm font-bold text-navy">
-                    {user.fullName ?? "Your account"}
-                  </p>
-                  <p className="text-xs font-medium capitalize text-muted-foreground font-ui">
-                    {user.role === "client" ? "Client" : "Developer"} · Signed in
-                  </p>
-                </div>
-              </div>
-            ) : null}
-
-            <ul className="flex flex-col gap-1 px-5 pt-2">
-              {[...NAV, { href: "#protection", label: "Protection" }].map((item, i) => (
-                <motion.li
-                  key={item.href}
-                  initial={{ opacity: 0, x: -12 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.04 * i, ease: EASE }}
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.4, ease: EASE }}
+              className="h-full flex flex-col overflow-y-auto"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between p-5 pb-2">
+                <Link href="/" onClick={() => setOpen(false)} className="flex items-center gap-2.5">
+                  <Image
+                    src="/somahorse-logo.png"
+                    alt=""
+                    width={34}
+                    height={34}
+                    className="size-8 rounded-full object-contain"
+                  />
+                  <span className="text-lg font-bold text-navy">
+                    Somahorse<span className="text-blue-vivid">.ai</span>
+                  </span>
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  aria-label="Close menu"
+                  className="grid size-10 place-items-center rounded-full hover:bg-black/5 transition-colors"
                 >
-                  <Link
-                    href={item.href}
-                    onClick={() => setOpen(false)}
-                    className="block rounded-xl px-4 py-3 font-ui text-xl font-semibold text-navy hover:bg-blue-mist"
-                  >
-                    {item.label}
-                  </Link>
-                </motion.li>
-              ))}
-            </ul>
+                  <X className="size-5 text-navy" aria-hidden />
+                </button>
+              </div>
 
-            <div className="mt-6 flex flex-col gap-3 px-5">
-              {user ? (
-                <>
-                  <Link
-                    href={user.dashboardPath}
-                    onClick={() => setOpen(false)}
-                    className="flex items-center justify-center gap-2 rounded-full border border-border px-4 py-3 text-center text-sm font-semibold text-navy font-ui"
+              {/* Nav items */}
+              <div className="flex-1 px-7 pt-8">
+                {NAV.map((item, i) => (
+                  <motion.div
+                    key={item.href}
+                    initial={{ opacity: 0, x: -16 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.06 * i, ease: EASE }}
                   >
-                    <LayoutDashboard className="size-4" aria-hidden />
-                    {dashboardLabel}
-                  </Link>
-                  {user.startProjectPath ? (
                     <Link
-                      href={user.startProjectPath}
+                      href={item.href}
                       onClick={() => setOpen(false)}
-                      className="rounded-full bg-navy-mid px-4 py-3 text-center text-sm font-semibold text-white font-ui"
+                      className="mobile-menu-item"
                     >
-                      Start a project
+                      <span>{item.label}</span>
+                      <ArrowRight className="size-4 text-muted-foreground" aria-hidden />
                     </Link>
-                  ) : null}
-                </>
-              ) : (
-                <>
-                  <Link
-                    href="/login"
-                    onClick={() => setOpen(false)}
-                    className="rounded-full border border-border px-4 py-3 text-center text-sm font-semibold text-navy font-ui"
-                  >
-                    Sign in
-                  </Link>
-                  <Link
-                    href={isDevPage ? "/signup?role=developer" : "/signup"}
-                    onClick={() => setOpen(false)}
-                    className="rounded-full bg-navy-mid px-4 py-3 text-center text-sm font-semibold text-white font-ui"
-                  >
-                    Sign up
-                  </Link>
-                </>
-              )}
-            </div>
+                  </motion.div>
+                ))}
+              </div>
+
+              {/* Bottom section — Sign in */}
+              <div className="px-7 pb-8 mt-auto">
+                {user ? (
+                  <div className="space-y-3">
+                    <div className="mobile-menu-signin-card flex items-center gap-3">
+                      <Avatar initials={user.initials} className="size-10 text-sm" />
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-bold text-navy">
+                          {user.fullName ?? "Your account"}
+                        </p>
+                        <p className="text-xs text-muted-foreground capitalize">
+                          {user.role === "client" ? "Client" : "Developer"} · Signed in
+                        </p>
+                      </div>
+                    </div>
+                    <Link
+                      href={user.dashboardPath}
+                      onClick={() => setOpen(false)}
+                      className="mobile-menu-signin-card flex items-center justify-between w-full"
+                    >
+                      <div>
+                        <p className="text-sm font-semibold text-navy">Dashboard</p>
+                        <p className="text-xs text-muted-foreground">Manage your projects</p>
+                      </div>
+                      <ArrowRight className="size-4 text-muted-foreground" />
+                    </Link>
+                    {user.startProjectPath && (
+                      <Link
+                        href={user.startProjectPath}
+                        onClick={() => setOpen(false)}
+                        className="mobile-menu-signin-card flex items-center justify-between w-full"
+                      >
+                        <div>
+                          <p className="text-sm font-semibold text-navy">Start a project</p>
+                          <p className="text-xs text-muted-foreground">Describe your problem</p>
+                        </div>
+                        <ArrowRight className="size-4 text-muted-foreground" />
+                      </Link>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <p className="cue text-muted-foreground mb-4">Sign in to</p>
+                    <Link
+                      href="/login"
+                      onClick={() => setOpen(false)}
+                      className="mobile-menu-signin-card flex items-center justify-between w-full"
+                    >
+                      <div>
+                        <p className="text-sm font-semibold text-navy">Client Portal</p>
+                        <p className="text-xs text-muted-foreground">Project tracking and management</p>
+                      </div>
+                      <ArrowRight className="size-4 text-muted-foreground" />
+                    </Link>
+                    <Link
+                      href={isDevPage ? "/signup?role=developer" : "/signup"}
+                      onClick={() => setOpen(false)}
+                      className="mobile-menu-signin-card flex items-center justify-between w-full"
+                    >
+                      <div>
+                        <p className="text-sm font-semibold text-navy">Developer Network</p>
+                        <p className="text-xs text-muted-foreground">Join · get certified · build</p>
+                      </div>
+                      <ArrowRight className="size-4 text-muted-foreground" />
+                    </Link>
+                  </div>
+                )}
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

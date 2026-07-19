@@ -36,24 +36,28 @@ export function HomeFAQ() {
   const [openIndex, setOpenIndex] = useState<number | null>(0);
 
   return (
-    <section id="faq" className="relative overflow-hidden px-5 py-20 sm:py-24">
-      <div className="dotted-grid pointer-events-none absolute inset-0 opacity-40" />
-      <div className="pointer-events-none absolute -top-20 right-[10%] size-[420px] rounded-full bg-blue-sky/10 blur-[140px]" />
+    <section id="faq" className="relative overflow-hidden px-4 sm:px-8 lg:px-12 py-20 sm:py-28">
+      <div className="pointer-events-none absolute -top-20 right-[10%] size-[420px] rounded-full bg-blue-sky/8 blur-[140px]" />
 
       <Reveal className="relative mx-auto max-w-3xl">
-        <div className="mb-12 text-center">
-          <span className="cue text-navy-mid">Answers, up front</span>
-          <h2 className="h-section mt-2 font-display">Frequently asked questions</h2>
+        <div className="mb-12 sm:mb-16 text-center">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-[0.2em] mb-4">
+            Answers, up front
+          </p>
+          <h2 className="h-section">Frequently asked questions</h2>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           {FAQS.map((faq, index) => {
             const isOpen = openIndex === index;
             return (
-              <div key={index} className="faq-glass overflow-hidden rounded-2xl">
+              <div
+                key={index}
+                className="overflow-hidden rounded-2xl border border-border/60 bg-white/80 backdrop-blur-sm transition-all duration-300 hover:border-blue-vivid/20"
+              >
                 <button
                   onClick={() => setOpenIndex(isOpen ? null : index)}
-                  className="flex w-full items-center justify-between px-6 py-5 text-left font-ui text-base font-bold text-navy"
+                  className="flex w-full items-center justify-between px-6 py-5 text-left text-base font-semibold text-navy"
                   aria-expanded={isOpen}
                 >
                   <span>{faq.question}</span>
@@ -65,7 +69,7 @@ export function HomeFAQ() {
                 </button>
                 <div
                   className={`transition-all duration-300 ease-in-out ${
-                    isOpen ? "max-h-[300px] border-t border-border/60" : "max-h-0"
+                    isOpen ? "max-h-[300px] border-t border-border/40" : "max-h-0"
                   } overflow-hidden`}
                 >
                   <p className="px-6 py-5 text-sm leading-relaxed text-muted-foreground">

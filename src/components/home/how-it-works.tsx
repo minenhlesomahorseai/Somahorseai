@@ -1,95 +1,86 @@
-import {
-  ClipboardList,
-  Users,
-  GitBranch,
-  BadgeCheck,
-  Radar,
-} from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import Image from "next/image";
 import { Reveal } from "./reveal";
- 
-type Agent = {
-  step: string;
-  name: string;
-  icon: LucideIcon;
-  copy: string;
+
+type Feature = {
+  number: string;
+  title: string;
+  description: string;
+  image: string;
 };
- 
-const AGENTS: Agent[] = [
+
+const FEATURES: Feature[] = [
   {
-    step: "Agent 01",
-    name: "Intake & Scoping",
-    icon: ClipboardList,
-    copy: "An enterprise types their problem. The agent reasons, asks the right questions, and returns a complete scope, a fixed price, and a timeline — in minutes.",
+    number: "01",
+    title: "AI-Powered Scoping",
+    description:
+      "An enterprise types their problem. The agent reasons, asks the right questions, and returns a complete scope, a fixed price, and a timeline — in minutes.",
+    image: "/card-research.png",
   },
   {
-    step: "Agent 02",
-    name: "Developer Matching",
-    icon: Users,
-    copy: "It scores every certified developer on skills, delivery history, availability, and agri-context, then proposes the ideal team. A human approves with one click.",
+    number: "02",
+    title: "Certified Dev Teams",
+    description:
+      "We score every certified developer on skills, delivery history, availability, and agri-context, then propose the ideal team. A human approves with one click.",
+    image: "/card-infrastructure.png",
   },
   {
-    step: "Agent 03",
-    name: "Project Management",
-    icon: GitBranch,
-    copy: "It replaces the project manager — updating the client before they ask, guiding developers, flagging risk early, and catching scope changes properly.",
-  },
-  {
-    step: "Agent 04",
-    name: "Certification",
-    icon: BadgeCheck,
-    copy: "No CVs, no interviews. An adaptive assessment tests how a developer thinks, what they can build, and whether they understand farming and supply chains.",
-  },
-  {
-    step: "Agent 05",
-    name: "Monitoring & Intelligence",
-    icon: Radar,
-    copy: "Every delivered system stays watched. It detects drift, retrains, reports in plain language — and makes our core agricultural intelligence smarter forever.",
+    number: "03",
+    title: "Intelligent Operations",
+    description:
+      "Every delivered system stays watched. Our monitoring agent detects drift, retrains, reports in plain language — and makes our core intelligence smarter forever.",
+    image: "/card-operations.png",
   },
 ];
- 
+
 export function HowItWorks() {
   return (
-    <section id="how-it-works" className="relative px-5 py-24 sm:py-28">
-      <div className="mx-auto max-w-6xl">
-        <Reveal className="mx-auto max-w-2xl text-center">
-          <p className="cue mb-3 text-navy-mid">The platform</p>
-          <h2 className="h-section">Five AI agents that run everything</h2>
-          <p className="lead mt-4">
-            Each agent handles one part of the journey and hands off to the next automatically. You
-            step in only to approve and to handle exceptions.
-          </p>
-        </Reveal>
- 
-        <div className="mt-14 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-          {AGENTS.map((agent, i) => {
-            const Icon = agent.icon;
-            return (
-              <Reveal key={agent.name} delay={i * 0.06}>
-                <article className="group h-full rounded-3xl border border-border bg-white p-7 shadow-soft transition duration-300 hover:-translate-y-1 hover:border-navy-mid/20 hover:shadow-card">
-                  <div className="flex items-center justify-between">
-                    <span className="grid size-12 place-items-center rounded-2xl bg-blue-light text-navy-mid ring-1 ring-navy-mid/10 transition group-hover:bg-navy-mid group-hover:text-white">
-                      <Icon className="size-5" aria-hidden />
-                    </span>
-                    <span className="cue text-muted-foreground">{agent.step}</span>
-                  </div>
-                  <h3 className="mt-5 font-ui text-xl font-bold text-navy">{agent.name}</h3>
-                  <p className="mt-3 text-sm leading-6 text-muted-foreground">{agent.copy}</p>
-                </article>
-              </Reveal>
-            );
-          })}
- 
-          <Reveal delay={0.3}>
-            <article className="flex h-full flex-col justify-between rounded-3xl border border-navy-mid/15 bg-gradient-to-br from-navy via-navy-mid to-blue-vivid p-7 text-white shadow-card">
-              <h3 className="font-display text-xl font-bold">One sentence</h3>
-              <p className="mt-3 text-sm leading-6 text-white/85">
-                Describe your agricultural problem — our AI scopes it, prices it, staffs it, builds
-                it, delivers it, and keeps it alive.
-              </p>
-              <span className="mt-6 font-display text-3xl font-bold text-white/95">→</span>
-            </article>
+    <section id="how-it-works" className="py-20 sm:py-32 lg:py-40">
+      <div className="max-w-7xl mx-auto px-4 sm:px-8 lg:px-12">
+        <div className="px-4 sm:px-8 lg:px-12">
+          {/* Section header */}
+          <Reveal className="max-w-3xl mx-auto text-center mb-12 sm:mb-16 lg:mb-20">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-[0.2em] mb-4">
+              What We Do
+            </p>
+            <h2 className="h-section">
+              From plain language to production systems
+            </h2>
           </Reveal>
+
+          {/* 3-column image cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5">
+            {FEATURES.map((feature, i) => (
+              <Reveal key={feature.number} delay={i * 0.1}>
+                <div className="group relative rounded-2xl overflow-hidden cursor-default">
+                  {/* Background image */}
+                  <div className="absolute inset-0">
+                    <Image
+                      alt=""
+                      src={feature.image}
+                      fill
+                      className="object-cover transition-transform duration-700 group-hover:scale-105"
+                      sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                    />
+                    {/* Dark gradient overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/35 to-black/15 group-hover:from-black/65 group-hover:via-black/30 group-hover:to-black/10 transition-colors duration-300" />
+                  </div>
+
+                  {/* Content overlay */}
+                  <div className="relative p-7 sm:p-8 min-h-[240px] sm:min-h-[280px] flex flex-col ring-1 ring-inset ring-white/10 rounded-2xl">
+                    <span className="text-xs font-mono text-white/60 mb-4">
+                      {feature.number}
+                    </span>
+                    <h3 className="text-lg sm:text-xl font-semibold text-white tracking-tight leading-snug mb-3">
+                      {feature.title}
+                    </h3>
+                    <p className="text-sm text-white/80 leading-relaxed">
+                      {feature.description}
+                    </p>
+                  </div>
+                </div>
+              </Reveal>
+            ))}
+          </div>
         </div>
       </div>
     </section>

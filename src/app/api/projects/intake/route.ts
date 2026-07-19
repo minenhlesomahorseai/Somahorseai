@@ -18,7 +18,7 @@ export async function POST(request: Request) {
 
   if (!aiConfigured()) {
     return NextResponse.json(
-      { error: "AI is not configured. Add GEMINI_API_KEY or OPENAI_API_KEY." },
+      { error: "AI is not configured. Add GEMINI_API_KEY." },
       { status: 503 }
     );
   }
@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     (m) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string"
   );
 
-  // Gemini/OpenAI need at least one user turn; on first open we inject a trigger
+  // Gemini needs at least one user turn; on first open we inject a trigger
   // so the agent greets the client proactively.
   const messages: ChatMessage[] =
     history.length === 0

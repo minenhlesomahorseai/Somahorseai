@@ -21,15 +21,15 @@ const POINTS = [
  
 export function IntelligenceBand() {
   return (
-    <section id="platform" className="px-5 py-12">
-      <Reveal className="relative mx-auto max-w-6xl overflow-hidden rounded-[34px] border border-navy-mid/20 bg-navy px-6 py-16 text-white shadow-calm sm:px-12 sm:py-20">
+    <section id="platform" className="px-4 sm:px-8 lg:px-12 py-12">
+      <Reveal className="relative mx-auto max-w-7xl overflow-hidden rounded-[34px] border border-navy-mid/20 bg-navy px-6 py-16 text-white shadow-calm sm:px-12 sm:py-24">
         <div className="pointer-events-none absolute -right-20 -top-24 size-[480px] rounded-full bg-blue-vivid/25 blur-[120px]" />
         <div className="pointer-events-none absolute -bottom-28 -left-16 size-[420px] rounded-full bg-blue-sky/20 blur-[120px]" />
         <div className="dotted-grid pointer-events-none absolute inset-0 opacity-[0.08]" />
  
-        <div className="relative max-w-2xl">
-          <p className="cue mb-3 text-blue-sky">The moat</p>
-          <h2 className="font-display text-3xl font-bold leading-tight sm:text-5xl">
+        <div className="relative max-w-3xl">
+          <p className="text-xs font-semibold text-blue-sky uppercase tracking-[0.2em] mb-4">The moat</p>
+          <h2 className="font-serif text-3xl font-bold leading-tight sm:text-5xl lg:text-6xl tracking-tight">
             Every project makes us{" "}
             <span className="bg-gradient-to-r from-blue-sky to-white bg-clip-text text-transparent">
               smarter — forever.
@@ -44,11 +44,11 @@ export function IntelligenceBand() {
  
         <div className="relative mt-12 grid gap-5 sm:grid-cols-3">
           {POINTS.map(({ icon: Icon, title, copy }) => (
-            <div key={title} className="rounded-2xl border border-white/12 bg-white/5 p-6 backdrop-blur-sm">
+            <div key={title} className="rounded-2xl border border-white/12 bg-white/5 p-6 backdrop-blur-sm transition-all duration-300 hover:bg-white/10 hover:border-white/20">
               <span className="grid size-11 place-items-center rounded-xl bg-blue-vivid/20 text-blue-sky ring-1 ring-white/10">
                 <Icon className="size-5" aria-hidden />
               </span>
-              <h3 className="mt-4 font-ui text-base font-bold">{title}</h3>
+              <h3 className="mt-4 text-base font-bold">{title}</h3>
               <p className="mt-2 text-sm leading-6 text-white/70">{copy}</p>
             </div>
           ))}

@@ -1,9 +1,8 @@
 /**
- * Lightweight multi-provider chat layer for the Somahorse.ai agents.
+ * Lightweight Gemini chat layer for the Somahorse.ai agents.
  *
- * We talk to Gemini and OpenAI directly over their REST APIs so no extra SDK
- * dependency is needed. Gemini is preferred when a key is present, otherwise we
- * fall back to OpenAI. Both a streaming and a non-streaming helper are exposed.
+ * We talk to Gemini directly over its REST API so no extra SDK
+ * dependency is needed. Both a streaming and a non-streaming helper are exposed.
  */
 
 export type ChatRole = "user" | "assistant" | "system";
@@ -13,27 +12,14 @@ export interface ChatMessage {
   content: string;
 }
 
-export type AiProvider = "gemini" | "openai";
-
-const GEMINI_MODEL = process.env.GEMINI_MODEL ?? "gemini-3.5-flash";
-const OPENAI_MODEL = process.env.OPENAI_MODEL ?? "gpt-4o-mini";
+const GEMINI_MODEL = process.env.GEMINI_MODEL ?? "gemini-2.5-flash";
 
 function geminiKey(): string | undefined {
   return process.env.GEMINI_API_KEY ?? process.env.GOOGLE_GENERATIVE_AI_API_KEY;
 }
 
-function openaiKey(): string | undefined {
-  return process.env.OPENAI_API_KEY;
-}
-
-export function resolveProvider(): AiProvider | null {
-  if (geminiKey()) return "gemini";
-  if (openaiKey()) return "openai";
-  return null;
-}
-
 export function aiConfigured(): boolean {
-  return resolveProvider() !== null;
+  return Boolean(geminiKey());
 }
 
 interface CallOptions {
@@ -48,13 +34,10 @@ export async function streamChat({
   messages,
   temperature = 0.6,
 }: CallOptions): Promise<ReadableStream<Uint8Array>> {
-  const provider = resolveProvider();
-  if (!provider) {
-    throw new Error("No AI provider configured");
+  if (!geminiKey()) {
+    throw new Error("No AI provider configured — add GEMINI_API_KEY.");
   }
-  return provider === "gemini"
-    ? streamGemini({ system, messages, temperature })
-    : streamOpenAi({ system, messages, temperature });
+  return streamGemini({ system, messages, temperature });
 }
 
 /** One-shot completion returning the full assistant text. */
@@ -117,45 +100,6 @@ function extractGeminiText(json: unknown): string {
   const parts = (json as GeminiChunk)?.candidates?.[0]?.content?.parts;
   if (!Array.isArray(parts)) return "";
   return parts.map((p) => p.text ?? "").join("");
-}
-
-// ---------------------------------------------------------------------------
-// OpenAI
-// ---------------------------------------------------------------------------
-async function streamOpenAi({
-  system,
-  messages,
-  temperature,
-}: CallOptions): Promise<ReadableStream<Uint8Array>> {
-  const key = openaiKey()!;
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${key}`,
-    },
-    body: JSON.stringify({
-      model: OPENAI_MODEL,
-      temperature,
-      stream: true,
-      messages: [{ role: "system", content: system }, ...messages],
-    }),
-  });
-
-  if (!res.ok || !res.body) {
-    const detail = await res.text().catch(() => "");
-    throw new Error(`OpenAI request failed (${res.status}): ${detail.slice(0, 300)}`);
-  }
-
-  return sseToText(res.body, extractOpenAiText);
-}
-
-interface OpenAiChunk {
-  choices?: { delta?: { content?: string } }[];
-}
-
-function extractOpenAiText(json: unknown): string {
-  return (json as OpenAiChunk)?.choices?.[0]?.delta?.content ?? "";
 }
 
 // ---------------------------------------------------------------------------

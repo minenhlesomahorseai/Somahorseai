@@ -66,7 +66,7 @@ export async function POST(request: Request) {
 
   if (!aiConfigured()) {
     return NextResponse.json(
-      { error: "AI is not configured. Add GEMINI_API_KEY or OPENAI_API_KEY." },
+      { error: "AI is not configured. Add GEMINI_API_KEY." },
       { status: 503 }
     );
   }

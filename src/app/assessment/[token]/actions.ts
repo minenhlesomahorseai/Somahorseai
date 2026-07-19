@@ -83,7 +83,7 @@ export async function submitAssessment(
     .eq("id", assessment.id);
   if (submitErr) throw new Error(submitErr.message);
 
-  // Grade with OpenAI. Best-effort: if grading fails the admin still sees the
+  // Grade with Gemini. Best-effort: if grading fails the admin still sees the
   // raw answers and can grade/decide manually.
   let graded = false;
   try {
