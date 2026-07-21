@@ -54,6 +54,7 @@ export interface TalentOnboarding {
   assessment: TalentAssessment | null;
   admin_notes: string | null;
   welcome_email_sent: boolean;
+  availability_status: "available" | "unavailable";
 }
 
 // ---------------------------------------------------------------------------

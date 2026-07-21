@@ -6,7 +6,7 @@ const CLIENT_COLUMNS =
   "id, current_step, company_name, sector, project_type, problem, timeline, budget_range, submitted, welcome_email_sent";
 
 const TALENT_COLUMNS =
-  "id, current_step, stage, headline, primary_role, years_experience, skills, bio, portfolio_url, github_url, country, agri_experience, assessment, admin_notes, welcome_email_sent";
+  "id, current_step, stage, headline, primary_role, years_experience, skills, bio, portfolio_url, github_url, country, agri_experience, assessment, admin_notes, welcome_email_sent, availability_status";
 
 export async function fetchClientOnboarding(
   supabase: SupabaseClient,

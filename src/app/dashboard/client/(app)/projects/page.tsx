@@ -1,19 +1,36 @@
 import Link from "next/link";
-import { Bot, CalendarClock, Plus, UsersRound, Wallet } from "lucide-react";
+import { Bot, CalendarClock, CheckCircle2, CreditCard, FileText, Plus, UsersRound, Wallet } from "lucide-react";
 
 import { StatusPill } from "@/components/dashboard/ui";
 import { fetchClientProjects } from "@/lib/dashboard/data";
 import { loadClientSession } from "@/lib/dashboard/session";
 import { createClient } from "@/lib/supabase/server";
 import { CLIENT_BUDGETS, CLIENT_TIMELINES, optionLabel } from "@/lib/onboarding/options";
+import { formatZar } from "@/lib/projects/pricing";
 
-export default async function ProjectsPage() {
+export default async function ProjectsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ started?: string }>;
+}) {
+  const { started } = await searchParams;
   const { userId } = await loadClientSession();
   const supabase = await createClient();
   const projects = await fetchClientProjects(supabase, userId);
 
   return (
     <div className="space-y-6">
+      {started ? (
+        <div className="flex items-start gap-3 rounded-3xl border border-accent-teal/25 bg-accent-teal/10 p-4 text-accent-teal shadow-soft" role="status">
+          <CheckCircle2 className="mt-0.5 size-5 shrink-0" aria-hidden />
+          <div>
+            <p className="text-sm font-bold">Payment confirmed. Your project is active.</p>
+            <p className="mt-0.5 text-xs leading-relaxed opacity-80">
+              The nominated specialists and Somahorse.ai control room have been alerted.
+            </p>
+          </div>
+        </div>
+      ) : null}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="cue text-navy-mid/70">Client dashboard</p>
@@ -63,6 +80,12 @@ export default async function ProjectsPage() {
                 <p className="mt-2 text-sm text-muted-foreground">{project.summary}</p>
               ) : null}
               <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold text-navy-mid">
+                {project.build_fee_amount ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-blue-light/60 px-2.5 py-1">
+                    <Wallet className="size-3" aria-hidden />
+                    {formatZar(project.build_fee_amount)} build
+                  </span>
+                ) : null}
                 {project.budget_range ? (
                   <span className="inline-flex items-center gap-1 rounded-full bg-blue-light/60 px-2.5 py-1">
                     <Wallet className="size-3" aria-hidden />
@@ -79,6 +102,32 @@ export default async function ProjectsPage() {
                   <span className="inline-flex items-center gap-1 rounded-full bg-accent-teal/12 px-2.5 py-1 text-accent-teal">
                     <UsersRound className="size-3" aria-hidden />
                     {project.matched_team!.length} matched
+                  </span>
+                ) : null}
+              </div>
+              <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border/60 pt-4">
+                {project.payment_status === "pending" && project.paddle_transaction_id ? (
+                  <Link
+                    href={`/dashboard/client/checkout/${project.id}`}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-navy-mid px-4 py-2 text-xs font-semibold text-white shadow-glow transition hover:bg-navy"
+                  >
+                    <CreditCard className="size-3.5" aria-hidden /> Pay deposit
+                    {project.deposit_amount ? ` · ${formatZar(project.deposit_amount)}` : ""}
+                  </Link>
+                ) : null}
+                {project.payment_status === "paid" ? (
+                  <a
+                    href={`/api/paddle/invoice?projectId=${project.id}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-border bg-white px-4 py-2 text-xs font-semibold text-navy-mid transition hover:bg-blue-mist"
+                  >
+                    <FileText className="size-3.5" aria-hidden /> Invoice
+                  </a>
+                ) : null}
+                {project.monthly_fee_amount ? (
+                  <span className="ml-auto text-[11px] text-muted-foreground">
+                    {formatZar(project.monthly_fee_amount)} monthly after launch
                   </span>
                 ) : null}
               </div>

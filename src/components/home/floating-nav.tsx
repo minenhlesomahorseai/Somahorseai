@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, LayoutDashboard, Loader2, LogOut, Menu, UserRound, X } from "lucide-react";
+import { ArrowRight, LayoutDashboard, Menu, X } from "lucide-react";
 import { AnimatePresence, motion, useMotionValueEvent, useScroll } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
@@ -55,7 +55,9 @@ export function FloatingNav({ user = null }: { user?: MarketingUser | null }) {
           "flex items-center w-full relative transition-all duration-300",
           scrolled
             ? "max-w-5xl rounded-full border border-border bg-white/85 shadow-nav backdrop-blur-xl px-3 py-2"
-            : "max-w-[1400px] border-transparent px-3 py-2",
+            : pathname === "/agriculture"
+              ? "max-w-5xl rounded-full agri-glass px-3 py-2"
+              : "max-w-[1400px] border-transparent px-3 py-2",
         ].join(" ")}
       >
         {/* Logo */}
@@ -127,16 +129,22 @@ export function FloatingNav({ user = null }: { user?: MarketingUser | null }) {
             </div>
           ) : (
             <motion.div
-              className="hidden md:block relative"
+              className="hidden md:flex items-center gap-4 relative"
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.4, duration: 0.5, ease: EASE }}
             >
               <Link
                 href="/login"
-                className="inline-flex items-center gap-1.5 px-4 py-1.5 text-[13px] font-medium bg-navy-mid text-white rounded-full hover:bg-navy transition-all focus:outline-none"
+                className="text-[13px] font-medium text-navy hover:text-blue-vivid transition-colors focus:outline-none px-3.5 py-1.5"
               >
                 Sign in
+              </Link>
+              <Link
+                href="/signup"
+                className="inline-flex items-center gap-1.5 px-4 py-1.5 text-[13px] font-medium bg-navy-mid text-white rounded-full hover:bg-navy transition-all focus:outline-none"
+              >
+                Sign up
               </Link>
             </motion.div>
           )}

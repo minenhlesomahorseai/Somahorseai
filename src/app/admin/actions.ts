@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { isAdminUser } from "@/lib/auth/admin";
 import type { TalentStage } from "@/lib/auth/types";
@@ -48,14 +49,15 @@ export async function setTalentStage(
     throw new Error(`Cannot move ${fromStage} -> ${nextStage}`);
   }
 
-  const contact = await fetchTalentContact(supabase, talentId);
+  const adminClient = createAdminClient() ?? supabase;
+  const contact = await fetchTalentContact(adminClient, talentId);
 
   // Approving to assessment: generate the AI assessment FIRST so we never
   // advance the stage (and email a dead link) when generation fails.
   let assessmentToken: string | null = null;
   let assessmentMinutes = 0;
   if (nextStage === "assessment") {
-    const { data: talentRow, error: talentErr } = await supabase
+    const { data: talentRow, error: talentErr } = await adminClient
       .from("talent_onboarding")
       .select(
         "headline, primary_role, years_experience, skills, bio, agri_experience, portfolio_url, github_url"
@@ -68,7 +70,7 @@ export async function setTalentStage(
 
     try {
       const assessment = await createAssessmentForTalent({
-        writeClient: createAdminClient() ?? supabase,
+        writeClient: adminClient,
         talentId,
         talent: talentRow,
         fullName: contact.fullName,
@@ -81,14 +83,15 @@ export async function setTalentStage(
     }
   }
 
-  const { error } = await supabase
+  const { error } = await adminClient
     .from("talent_onboarding")
     .update({
       stage: nextStage,
       admin_notes: notes ?? null,
       reviewed_at: new Date().toISOString(),
     })
-    .eq("id", talentId);
+    .eq("id", talentId)
+    .eq("stage", fromStage);
 
   if (error) {
     throw new Error(error.message);
@@ -96,24 +99,27 @@ export async function setTalentStage(
 
   // Fire the appropriate transactional email (best-effort, never throws).
   if (nextStage === "assessment" && assessmentToken) {
-    await sendAssessmentInvite({
+    const res = await sendAssessmentInvite({
       to: contact.email,
       firstName: contact.firstName,
       assessmentToken,
       timeLimitMinutes: assessmentMinutes,
     });
+    console.log(`[admin action] sendAssessmentInvite result for ${contact.email}:`, res);
   } else if (nextStage === "interview") {
-    await sendTalentPassed({
+    const res = await sendTalentPassed({
       to: contact.email,
       firstName: contact.firstName,
       notes,
     });
+    console.log(`[admin action] sendTalentPassed result for ${contact.email}:`, res);
   } else if (nextStage === "rejected") {
-    await sendTalentRejected({
+    const res = await sendTalentRejected({
       to: contact.email,
       firstName: contact.firstName,
       reason: notes,
     });
+    console.log(`[admin action] sendTalentRejected result for ${contact.email}:`, res);
   }
 
   revalidatePath("/admin");
@@ -121,7 +127,7 @@ export async function setTalentStage(
 }
 
 async function fetchTalentContact(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  supabase: SupabaseClient,
   talentId: string
 ): Promise<TalentContact> {
   const { data } = await supabase
@@ -129,9 +135,27 @@ async function fetchTalentContact(
     .select("full_name, email")
     .eq("id", talentId)
     .maybeSingle();
+
+  let email = (data?.email as string | null) ?? null;
   const fullName = (data?.full_name as string | null) ?? null;
+
+  // Fallback to Auth Admin API if email is missing from profiles
+  if (!email) {
+    const adminClient = createAdminClient();
+    if (adminClient) {
+      try {
+        const { data: authUser } = await adminClient.auth.admin.getUserById(talentId);
+        if (authUser?.user?.email) {
+          email = authUser.user.email;
+        }
+      } catch (e) {
+        console.error(`[admin action] Failed to fetch user from auth admin API for ${talentId}:`, e);
+      }
+    }
+  }
+
   return {
-    email: (data?.email as string | null) ?? null,
+    email,
     firstName: fullName ? fullName.trim().split(/\s+/)[0] : null,
     fullName,
   };

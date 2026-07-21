@@ -6,6 +6,9 @@ import { CLIENT_WELCOME_MD, HOW_IT_WORKS_MD } from "./assets";
 import {
   assessmentInviteEmail,
   clientWelcomeEmail,
+  projectAssignmentTalentEmail,
+  projectFundedAdminEmail,
+  projectStartedClientEmail,
   talentPassedEmail,
   talentRejectedEmail,
   talentWelcomeEmail,
@@ -52,7 +55,10 @@ async function send(
   email: BuiltEmail,
   attachments?: Attachment[]
 ): Promise<SendResult> {
-  if (!to) return { sent: false, error: "No recipient address" };
+  if (!to) {
+    console.warn(`[email] Skipped "${email.subject}" — no recipient address provided.`);
+    return { sent: false, error: "No recipient address" };
+  }
 
   const api = resend();
   if (!api) {
@@ -154,5 +160,64 @@ export function sendTalentRejected(opts: {
   return send(
     opts.to,
     talentRejectedEmail({ firstName: opts.firstName, reason: opts.reason })
+  );
+}
+
+export function sendProjectStartedClient(opts: {
+  to: string | null;
+  firstName: string | null;
+  projectId: string;
+  projectTitle: string;
+  depositZar: string;
+}): Promise<SendResult> {
+  return send(
+    opts.to,
+    projectStartedClientEmail({
+      firstName: opts.firstName,
+      projectTitle: opts.projectTitle,
+      depositZar: opts.depositZar,
+      dashboardUrl: siteUrl(`/dashboard/client/projects?started=${opts.projectId}`),
+    })
+  );
+}
+
+export function sendProjectAssignmentTalent(opts: {
+  to: string | null;
+  firstName: string | null;
+  projectTitle: string;
+  role: string;
+}): Promise<SendResult> {
+  return send(
+    opts.to,
+    projectAssignmentTalentEmail({
+      firstName: opts.firstName,
+      projectTitle: opts.projectTitle,
+      role: opts.role,
+      dashboardUrl: siteUrl("/dashboard/talent"),
+    })
+  );
+}
+
+export function sendProjectFundedAdmin(opts: {
+  to: string | null;
+  projectId: string;
+  projectTitle: string;
+  companyName: string | null;
+  depositZar: string;
+  invoiceNumber: string | null;
+  teamSummary: string;
+  needsStaffingAttention: boolean;
+}): Promise<SendResult> {
+  return send(
+    opts.to,
+    projectFundedAdminEmail({
+      projectTitle: opts.projectTitle,
+      companyName: opts.companyName,
+      depositZar: opts.depositZar,
+      invoiceNumber: opts.invoiceNumber,
+      teamSummary: opts.teamSummary,
+      needsStaffingAttention: opts.needsStaffingAttention,
+      adminUrl: siteUrl(`/admin/projects/${opts.projectId}`),
+    })
   );
 }

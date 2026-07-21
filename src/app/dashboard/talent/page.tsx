@@ -4,12 +4,14 @@ import {
   ArrowUpRight,
   BadgeCheck,
   BriefcaseBusiness,
+  CalendarClock,
   CheckCircle2,
   Circle,
   ClipboardCheck,
   Code2,
   ExternalLink,
   FileText,
+  FolderKanban,
   GitFork,
   Globe2,
   MapPin,
@@ -25,6 +27,20 @@ import { fetchLatestAssessmentForTalent } from "@/lib/assessment/data";
 import { optionLabel, TALENT_ROLES } from "@/lib/onboarding/options";
 import { fetchTalentOnboarding } from "@/lib/onboarding/data";
 import { createClient } from "@/lib/supabase/server";
+
+import { setTalentAvailability } from "./actions";
+
+interface TalentProject {
+  project_id: string;
+  title: string;
+  summary: string | null;
+  project_status: string;
+  solution_type: string | null;
+  timeline_weeks: number | null;
+  started_at: string | null;
+  assignment_role: string;
+  assignment_status: string;
+}
 
 const STAGE_COPY: Record<
   TalentStage,
@@ -114,9 +130,10 @@ export default async function TalentDashboardPage() {
   const profile = await fetchProfile(supabase, user.id);
   if (!profile || profile.role !== "talent") redirect("/onboarding/talent");
 
-  const [talent, assessment] = await Promise.all([
+  const [talent, assessment, talentProjectsResult] = await Promise.all([
     fetchTalentOnboarding(supabase, user.id),
     fetchLatestAssessmentForTalent(supabase, user.id),
+    supabase.rpc("list_my_talent_projects"),
   ]);
 
   if (!talent) redirect("/onboarding/talent");
@@ -130,6 +147,10 @@ export default async function TalentDashboardPage() {
       ? Math.round((assessment.score / assessment.max_score) * 100)
       : null;
   const isApproved = talent.stage === "approved";
+  const talentProjects = (talentProjectsResult.data ?? []) as TalentProject[];
+  const hasActiveProject = talentProjects.some((project) =>
+    ["assigned", "active"].includes(project.assignment_status)
+  );
   const portfolioLinks = [
     { label: "Portfolio", href: talent.portfolio_url, icon: Globe2 },
     { label: "GitHub", href: talent.github_url, icon: GitFork },
@@ -165,6 +186,92 @@ export default async function TalentDashboardPage() {
             <StatBadge value={`${completion}/7`} label="Profile" icon={UserRound} />
           </div>
         </div>
+
+        {isApproved ? (
+          <section className="rounded-3xl border border-border/70 bg-white/80 p-5 shadow-card backdrop-blur-sm sm:p-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="cue text-navy-mid/70">Assigned work</p>
+                <h2 className="mt-1 font-display text-2xl font-bold text-navy">Your projects</h2>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="text-right">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
+                    Matching status
+                  </p>
+                  <p
+                    className={`mt-0.5 text-xs font-bold ${
+                      hasActiveProject || talent.availability_status === "available"
+                        ? "text-accent-teal"
+                        : "text-accent-amber"
+                    }`}
+                  >
+                    {hasActiveProject
+                      ? "Committed to a project"
+                      : talent.availability_status === "available"
+                        ? "Available for matching"
+                        : "Unavailable"}
+                  </p>
+                </div>
+                {!hasActiveProject ? (
+                  <form action={setTalentAvailability}>
+                    <input
+                      type="hidden"
+                      name="availability"
+                      value={
+                        talent.availability_status === "available"
+                          ? "unavailable"
+                          : "available"
+                      }
+                    />
+                    <button
+                      type="submit"
+                      className="inline-flex h-10 items-center justify-center rounded-full border border-border-strong bg-white px-4 text-xs font-bold text-navy-mid transition hover:bg-blue-mist"
+                    >
+                      Mark {talent.availability_status === "available" ? "unavailable" : "available"}
+                    </button>
+                  </form>
+                ) : (
+                  <span className="grid size-10 place-items-center rounded-2xl bg-blue-light/70 text-navy-mid">
+                    <FolderKanban className="size-5" aria-hidden />
+                  </span>
+                )}
+              </div>
+            </div>
+            {talentProjects.length ? (
+              <div className="mt-5 grid gap-4 lg:grid-cols-2">
+                {talentProjects.map((project) => (
+                  <div key={project.project_id} className="rounded-2xl border border-border/70 bg-white/80 p-4 shadow-soft">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-display text-base font-bold text-navy">{project.title}</p>
+                        <p className="mt-0.5 text-xs font-semibold text-blue-vivid">{project.assignment_role}</p>
+                      </div>
+                      <span className="rounded-full bg-accent-teal/12 px-2.5 py-1 text-[11px] font-bold capitalize text-accent-teal">
+                        {project.project_status.replaceAll("_", " ")}
+                      </span>
+                    </div>
+                    {project.summary ? <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-muted-foreground">{project.summary}</p> : null}
+                    <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold text-navy-mid">
+                      {project.timeline_weeks ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-blue-light/60 px-2.5 py-1">
+                          <CalendarClock className="size-3" aria-hidden /> {project.timeline_weeks} weeks
+                        </span>
+                      ) : null}
+                      <span className="inline-flex items-center gap-1 rounded-full bg-blue-light/60 px-2.5 py-1 capitalize">
+                        <BriefcaseBusiness className="size-3" aria-hidden /> {project.assignment_status}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-5 rounded-2xl border border-dashed border-border bg-white/50 p-5 text-center text-sm text-muted-foreground">
+                You are certified and available for matching. Funded assignments will appear here immediately.
+              </p>
+            )}
+          </section>
+        ) : null}
 
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
           <Tile className="lg:col-span-4 lg:row-span-2 flex flex-col justify-between overflow-hidden bg-gradient-to-br from-navy via-navy-mid to-blue-vivid p-0 text-white">

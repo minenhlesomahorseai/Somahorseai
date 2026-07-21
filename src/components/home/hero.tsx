@@ -2,7 +2,6 @@
  
 import {
   ArrowRight,
-  ArrowUpRight,
   Loader2,
   LogOut,
 } from "lucide-react";

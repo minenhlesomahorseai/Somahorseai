@@ -12,6 +12,7 @@ import {
   XCircle,
   Trophy,
   ExternalLink,
+  FolderKanban,
 } from "lucide-react";
 
 import type { Profile, TalentOnboarding, TalentStage } from "@/lib/auth/types";
@@ -109,10 +110,18 @@ export function AdminConsole({
               Somahorse<span className="text-blue-vivid">.ai</span>
             </span>
           </Link>
-          <span className="inline-flex items-center gap-2 rounded-full border border-navy-mid/20 bg-white/70 px-3.5 py-1.5 text-xs font-semibold text-navy-mid shadow-soft">
-            <ShieldCheck className="size-3.5" />
-            Admin · {adminEmail}
-          </span>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/admin/projects"
+              className="inline-flex items-center gap-1.5 rounded-full bg-navy-mid px-3.5 py-2 text-xs font-semibold text-white shadow-glow transition hover:bg-navy"
+            >
+              <FolderKanban className="size-3.5" /> Projects
+            </Link>
+            <span className="hidden items-center gap-2 rounded-full border border-navy-mid/20 bg-white/70 px-3.5 py-1.5 text-xs font-semibold text-navy-mid shadow-soft sm:inline-flex">
+              <ShieldCheck className="size-3.5" />
+              Admin · {adminEmail}
+            </span>
+          </div>
         </div>
       </header>
 

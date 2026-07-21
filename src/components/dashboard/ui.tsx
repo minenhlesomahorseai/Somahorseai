@@ -75,17 +75,21 @@ export function StatBadge({
 export function StatusPill({ status }: { status: string }) {
   const tones: Record<string, string> = {
     scoping: "bg-blue-light text-navy-mid",
+    awaiting_payment: "bg-accent-amber/15 text-accent-amber",
     matching: "bg-accent-amber/15 text-accent-amber",
     in_build: "bg-blue-vivid/12 text-blue-vivid",
     monitoring: "bg-accent-teal/12 text-accent-teal",
     delivered: "bg-navy/10 text-navy",
+    cancelled: "bg-navy/10 text-muted-foreground",
   };
   const labels: Record<string, string> = {
     scoping: "Scoping",
+    awaiting_payment: "Awaiting payment",
     matching: "Matching team",
     in_build: "In build",
     monitoring: "Monitoring",
     delivered: "Delivered",
+    cancelled: "Cancelled",
   };
   return (
     <span

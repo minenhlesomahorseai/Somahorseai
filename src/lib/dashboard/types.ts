@@ -11,10 +11,12 @@ export interface AvailableDeveloper {
 
 export type ProjectStatus =
   | "scoping"
+  | "awaiting_payment"
   | "matching"
   | "in_build"
   | "monitoring"
-  | "delivered";
+  | "delivered"
+  | "cancelled";
 
 export interface ClientProject {
   id: string;
@@ -26,6 +28,18 @@ export interface ClientProject {
   timeline: string | null;
   scope: string | null;
   matched_team: string[] | null;
+  solution_type: string | null;
+  delivery_format: string | null;
+  proposal: import("@/lib/projects/types").ProjectProposal | null;
+  timeline_weeks: number | null;
+  build_fee_amount: number | null;
+  deposit_amount: number | null;
+  monthly_fee_amount: number | null;
+  currency: string;
+  payment_status: "not_required" | "pending" | "paid" | "failed" | "refunded";
+  paddle_transaction_id: string | null;
+  paid_at: string | null;
+  started_at: string | null;
   created_at: string;
   updated_at: string;
 }

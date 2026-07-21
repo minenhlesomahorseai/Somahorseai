@@ -3,7 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { AvailableDeveloper, ClientProject } from "./types";
 
 const PROJECT_COLUMNS =
-  "id, title, summary, status, sector, budget_range, timeline, scope, matched_team, created_at, updated_at";
+  "id, title, summary, status, sector, budget_range, timeline, scope, matched_team, solution_type, delivery_format, proposal, timeline_weeks, build_fee_amount, deposit_amount, monthly_fee_amount, currency, payment_status, paddle_transaction_id, paid_at, started_at, created_at, updated_at";
 
 /**
  * Reads the certified, available developer pool via the SECURITY DEFINER RPC

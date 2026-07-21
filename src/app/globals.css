@@ -229,6 +229,24 @@ button:focus-visible {
     radial-gradient(55% 45% at 50% 52%, hsl(var(--blue-light) / 0.55), transparent 75%),
     linear-gradient(180deg, hsl(var(--blue-mist)), hsl(var(--background)) 70%);
 }
+
+/* Project intake: a focused, low-contrast glass surface that keeps the
+   conversation legible while still carrying the Somahorse blue atmosphere. */
+.intake-field {
+  background:
+    radial-gradient(58% 42% at 50% -4%, hsl(var(--blue-sky) / 0.26), transparent 70%),
+    radial-gradient(38% 40% at 93% 34%, hsl(var(--blue-vivid) / 0.14), transparent 72%),
+    radial-gradient(42% 40% at 4% 82%, hsl(var(--accent-teal) / 0.12), transparent 74%),
+    linear-gradient(180deg, hsl(var(--blue-mist)), hsl(var(--background)) 72%);
+}
+
+.intake-glass {
+  background: linear-gradient(145deg, rgb(255 255 255 / 0.76), rgb(236 245 255 / 0.48));
+  border: 1px solid rgb(255 255 255 / 0.72);
+  box-shadow: 0 14px 40px -26px hsl(var(--navy) / 0.34), inset 0 1px 0 rgb(255 255 255 / 0.78);
+  backdrop-filter: blur(18px) saturate(1.15);
+  -webkit-backdrop-filter: blur(18px) saturate(1.15);
+}
  
 /* ─── Agriculture page — green theme + liquid glass ─── */
 .agri-field {

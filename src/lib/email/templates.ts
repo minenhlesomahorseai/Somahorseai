@@ -168,6 +168,72 @@ export function talentRejectedEmail(opts: {
   };
 }
 
+export function projectStartedClientEmail(opts: {
+  firstName: string | null;
+  projectTitle: string;
+  dashboardUrl: string;
+  depositZar: string;
+}): BuiltEmail {
+  const name = opts.firstName ?? FALLBACK_NAME;
+  return {
+    subject: `Project started: ${opts.projectTitle}`,
+    html: layout({
+      preheader: "Your deposit is confirmed and your project is active.",
+      heading: `Your project is underway, ${escapeHtml(name)}.`,
+      body:
+        p(`We've confirmed your ${escapeHtml(opts.depositZar)} deposit for <strong>${escapeHtml(opts.projectTitle)}</strong>.`) +
+        p("The nominated team has been assigned, Somahorse.ai is coordinating delivery, and your project now appears in the dashboard.") +
+        p("We'll keep the timeline, milestones, messages, and payment records together in one place."),
+      cta: { href: opts.dashboardUrl, label: "Open your project" },
+    }),
+  };
+}
+
+export function projectAssignmentTalentEmail(opts: {
+  firstName: string | null;
+  projectTitle: string;
+  role: string;
+  dashboardUrl: string;
+}): BuiltEmail {
+  const name = opts.firstName ?? FALLBACK_NAME;
+  return {
+    subject: `New Somahorse.ai project: ${opts.projectTitle}`,
+    html: layout({
+      preheader: "You have been assigned to a funded project.",
+      heading: `You have a new project, ${escapeHtml(name)}.`,
+      body:
+        p(`The client deposit for <strong>${escapeHtml(opts.projectTitle)}</strong> has cleared and you have been assigned as <strong>${escapeHtml(opts.role)}</strong>.`) +
+        p("Open your dashboard for the project brief and delivery status. Somahorse.ai will coordinate the next step with the full team."),
+      cta: { href: opts.dashboardUrl, label: "Open talent dashboard" },
+    }),
+  };
+}
+
+export function projectFundedAdminEmail(opts: {
+  projectTitle: string;
+  companyName: string | null;
+  depositZar: string;
+  invoiceNumber: string | null;
+  teamSummary: string;
+  adminUrl: string;
+  needsStaffingAttention: boolean;
+}): BuiltEmail {
+  return {
+    subject: `${opts.needsStaffingAttention ? "Staffing attention: " : "Project funded: "}${opts.projectTitle}`,
+    html: layout({
+      preheader: "A client deposit has completed through Paddle.",
+      heading: opts.needsStaffingAttention ? "A paid project needs staffing attention." : "A new project is funded.",
+      body:
+        p(`<strong>Project:</strong> ${escapeHtml(opts.projectTitle)}<br/><strong>Enterprise:</strong> ${escapeHtml(opts.companyName ?? "Not specified")}<br/><strong>Deposit:</strong> ${escapeHtml(opts.depositZar)}<br/><strong>Invoice:</strong> ${escapeHtml(opts.invoiceNumber ?? "Pending Paddle finalisation")}`) +
+        p(`<strong>Assigned team:</strong> ${escapeHtml(opts.teamSummary || "No assignment completed")}`) +
+        (opts.needsStaffingAttention
+          ? p("At least one proposed specialist was no longer available when payment cleared. The project is active in the staffing queue and needs a replacement before delivery begins.")
+          : p("The nominated specialists have been assigned and alerted.")),
+      cta: { href: opts.adminUrl, label: "Open project control" },
+    }),
+  };
+}
+
 function escapeHtml(input: string): string {
   return input
     .replace(/&/g, "&amp;")
