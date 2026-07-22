@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowRight, CheckCircle2, ReceiptText, Sparkles } from "lucide-react";
+import { ArrowRight, CheckCircle2, ReceiptText } from "lucide-react";
 import Link from "next/link";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
@@ -24,20 +24,11 @@ export function PricingHero({ ctaHref }: { ctaHref: string }) {
 
       <div className="relative z-10 mx-auto grid min-h-[44rem] max-w-7xl items-center gap-10 px-4 pb-16 pt-28 sm:px-6 sm:pt-32 lg:grid-cols-[minmax(0,1fr)_minmax(25rem,0.78fr)] lg:gap-16 lg:px-10">
         <div className="min-w-0">
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.55, ease: EASE }}
-            className="inline-flex items-center gap-2 rounded-full border border-blue-vivid/15 bg-white/75 px-3 py-1.5 text-[11px] font-bold text-blue-vivid shadow-soft backdrop-blur-xl"
-          >
-            <Sparkles className="size-3.5" aria-hidden /> Pricing shaped around the work
-          </motion.div>
-
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.65, ease: EASE, delay: 0.08 }}
-            className="mt-6 max-w-4xl text-balance font-display text-[clamp(3rem,8vw,6.2rem)] font-bold leading-[0.94] tracking-[-0.06em] text-navy"
+            className="max-w-4xl text-balance font-display text-[clamp(3rem,8vw,6.2rem)] font-bold leading-[0.94] tracking-[-0.06em] text-navy"
           >
             A clear price for a <span className="text-gradient">clear outcome.</span>
           </motion.h1>

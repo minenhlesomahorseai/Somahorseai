@@ -3,7 +3,6 @@ import Link from "next/link";
 import {
   ArrowRight,
   ArrowUpRight,
-  BadgeCheck,
   Check,
   CheckCircle2,
   CircleDollarSign,
@@ -121,10 +120,7 @@ export default async function DevelopersPage() {
 
           <div className="relative mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[minmax(0,0.9fr)_minmax(31rem,1.1fr)] lg:gap-10">
             <Reveal className="min-w-0">
-              <div className="inline-flex items-center gap-2 rounded-full border border-blue-vivid/15 bg-white/72 px-3 py-1.5 text-[11px] font-bold text-blue-vivid shadow-soft backdrop-blur-xl">
-                <BadgeCheck className="size-3.5" aria-hidden /> Certified talent network
-              </div>
-              <h1 className="mt-6 max-w-3xl text-balance font-display text-[clamp(2.8rem,7vw,5.8rem)] font-bold leading-[0.96] tracking-[-0.055em] text-navy">
+              <h1 className="max-w-3xl text-balance font-display text-[clamp(2.8rem,7vw,5.8rem)] font-bold leading-[0.96] tracking-[-0.055em] text-navy">
                 Build systems that move <span className="text-dev-gradient">real economies.</span>
               </h1>
               <p className="mt-6 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg sm:leading-8">
