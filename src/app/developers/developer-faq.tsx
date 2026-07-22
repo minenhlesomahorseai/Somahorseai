@@ -10,24 +10,24 @@ interface FAQItem {
 
 const FAQS: FAQItem[] = [
   {
-    question: "What tech stack do Somahorse developers use?",
-    answer: "We primarily build with modern, scalable stacks. This includes Next.js, React, TypeScript, TailwindCSS, Node.js, Python (FastAPI/Django), and PostgreSQL. Many projects also involve integrating AI models (like Gemini and Claude) and handling offline-first local database synchronizations for remote agricultural areas.",
+    question: "Which kinds of developers can apply?",
+    answer: "We welcome frontend, backend, full-stack, mobile, data, AI, DevOps, and product-focused builders. Your profile records your primary role and skills so matching can place you on work that fits your strongest capabilities.",
   },
   {
-    question: "How do milestones and payments work?",
-    answer: "Somahorse.ai uses automated milestone tracking. Before work starts, the project budget is secured in escrow. When you submit a pull request and it passes automated tests and the AI monitoring validation loop, the milestone is approved, and payouts are sent directly to your linked bank account or wallet.",
+    question: "How are projects and tasks organised?",
+    answer: "Each funded project receives a shared workspace. The accepted scope is converted into milestones and tasks, progress updates as the team completes work, and the client sees the same delivery status in plain language.",
   },
   {
-    question: "What does the technical assessment look like?",
-    answer: "The assessment is a real-world coding sandbox. You will be given a small, scoped agricultural project requirement (e.g., building a mobile-responsive supply-chain tracking dashboard or writing an offline sync service for weight tickets). We evaluate code architecture, TypeScript types, responsive UI, and clean data modeling.",
+    question: "How do earnings work?",
+    answer: "After a client payment is verified, 60% is allocated to the project's talent pool. For a multi-person project, that pool is split across the assigned team. Your dashboard clearly separates amounts owed to you from payouts that the Somahorse admin has marked as paid.",
   },
   {
-    question: "Can I work freelance or part-time?",
-    answer: "Absolutely! Projects on our network are scoped by hours (ranging from 10 to 40 hours per week). When you join, you can specify your availability and only apply to scoping projects that align with your schedule.",
+    question: "What does the certification process involve?",
+    answer: "You complete your talent profile and a practical assessment, followed by review and, where required, an interview. The process looks at technical judgement, delivery quality, communication, and how well you handle real operating constraints.",
   },
   {
-    question: "What is the AI maintenance loop?",
-    answer: "Once a project is built and deployed, the Somahorse.ai monitoring system runs continuous integration, telemetry, and self-healing scripts. If there are API crashes or minor bugs in production, our system attempts to auto-repair them or opens clear issues for developers to address, removing the DevOps headache.",
+    question: "How do clients and developers communicate?",
+    answer: "Every project has a secure participant-only conversation shared by the client, assigned talent, and Somahorse administrators. Messages, unread counts, notifications, and read receipts update in realtime without refreshing the dashboard.",
   },
 ];
 
@@ -45,7 +45,7 @@ export function DeveloperFAQ() {
         return (
           <div
             key={index}
-            className="dev-glass overflow-hidden rounded-2xl transition"
+            className="developer-panel overflow-hidden rounded-2xl transition"
           >
             <button
               onClick={() => toggle(index)}
@@ -61,7 +61,7 @@ export function DeveloperFAQ() {
             </button>
             <div
               className={`transition-all duration-300 ease-in-out ${
-                isOpen ? "max-h-[300px] border-t border-border" : "max-h-0"
+                isOpen ? "max-h-[360px] border-t border-border" : "max-h-0"
               } overflow-hidden`}
             >
               <p className="px-6 py-5 text-sm leading-relaxed text-muted-foreground">

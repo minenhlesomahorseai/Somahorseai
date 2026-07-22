@@ -1,291 +1,370 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import Image from "next/image";
+import {
+  ArrowRight,
+  ArrowUpRight,
+  BadgeCheck,
+  Check,
+  CheckCircle2,
+  CircleDollarSign,
+  ClipboardCheck,
+  Clock3,
+  Code2,
+  Coins,
+  Cpu,
+  FolderKanban,
+  GitPullRequest,
+  LockKeyhole,
+  MessageCircle,
+  MessageSquareCode,
+  PartyPopper,
+  ShieldCheck,
+  Sparkles,
+  UserPlus,
+  UsersRound,
+  WalletCards,
+} from "lucide-react";
+
 import { FloatingNav } from "@/components/home/floating-nav";
 import { Footer } from "@/components/home/footer";
+import { Reveal } from "@/components/home/reveal";
 import { getMarketingUser } from "@/lib/auth/marketing";
 import { DeveloperFAQ } from "./developer-faq";
-import { DeveloperHeroClient } from "./developer-hero-client";
-import { ArrowUpRight, ArrowRight, UserPlus, ClipboardCheck, MessageSquareCode, PartyPopper, Coins, Cpu, Eye, GitPullRequest } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Join our Developer Network — Somahorse.ai",
-  description: "Build robust AI infrastructure and software for African agricultural supply chains. Apply to join our vetted developer network today.",
+  title: "For Developers — Somahorse.ai",
+  description:
+    "Join the certified Somahorse developer network, work on funded digital infrastructure projects, and track delivery and earnings in one shared workspace.",
 };
 
-const BENEFITS = [
+const STACK = ["TypeScript", "Next.js", "React", "Node.js", "Python", "PostgreSQL", "AI APIs", "Cloud infrastructure"];
+
+const EXPERIENCE = [
   {
-    icon: Cpu,
-    title: "AI-Powered Scoping",
-    desc: "No more ambiguous requirements. Our AI engine scopes agricultural problems into clear, structured milestones so you can focus strictly on writing great code.",
+    icon: Sparkles,
+    title: "AI-scoped before you start",
+    description: "Every accepted brief becomes a structured delivery plan with milestones, tasks, owners, and a clear definition of done.",
+    className: "lg:col-span-2",
   },
   {
-    icon: Coins,
-    title: "Milestone Escrow Payouts",
-    desc: "All projects are fully funded in escrow before development starts. Get weekly payouts automatically approved and paid out as soon as code passes testing.",
+    icon: FolderKanban,
+    title: "One delivery workspace",
+    description: "See the current milestone, shared team tasks, expected finish date, and project progress without stitching tools together.",
+    className: "",
   },
   {
-    icon: GitPullRequest,
-    title: "Automated DevOps Loop",
-    desc: "Deploy code and let our automated AI system handle telemetry, deployment, and minor bug patching. Sleep peacefully without production crash alerts.",
+    icon: MessageCircle,
+    title: "Context stays with the project",
+    description: "Realtime, participant-only messaging keeps the client, talent team, and Somahorse control room aligned.",
+    className: "",
   },
   {
-    icon: Eye,
-    title: "Impactful Work",
-    desc: "Build software that keeps critical food logistics moving. Track weights, manage distributors, coordinate cooperative farmers, and improve livelihood transparency.",
+    icon: CircleDollarSign,
+    title: "Transparent earnings",
+    description: "Verified client payments allocate 60% to the project talent pool, with owed and paid amounts visible in your ledger.",
+    className: "lg:col-span-2",
   },
 ] as const;
 
 const PIPELINE = [
   {
     step: "01",
-    title: "Apply & Scoping",
-    desc: "Create an account, specify your tech stack (Next.js, Python, PostgreSQL, APIs), and link your GitHub profile. Our team reviews profile applications within 48 hours.",
     icon: UserPlus,
-    badgeColor: "bg-talent/10 text-talent",
+    title: "Build your profile",
+    description: "Tell us your role, strongest skills, experience, availability, and the kind of systems you build best.",
   },
   {
     step: "02",
-    title: "Technical Sandbox",
-    desc: "Complete a custom coding assignment simulating real agricultural logistics (e.g. offline-first inventory syncing, offline coordinate mapping, or supply-chain queues).",
     icon: ClipboardCheck,
-    badgeColor: "bg-accent-teal/15 text-accent-teal",
+    title: "Complete the assessment",
+    description: "Work through a practical technical assessment designed to reveal how you reason, model, and deliver.",
   },
   {
     step: "03",
-    title: "Live Review",
-    desc: "A 45-minute live technical and architecture interview with a core Somahorse system builder to discuss your assessment, tech decisions, and workflow.",
     icon: MessageSquareCode,
-    badgeColor: "bg-accent-amber/15 text-accent-amber",
+    title: "Review and certification",
+    description: "The Somahorse team reviews your submission and interview before approving you for the certified network.",
   },
   {
     step: "04",
-    title: "Certified Onboarding",
-    desc: "Welcome to the developer network! Get matched with funded projects, deploy code with AI safety nets, and receive automated milestone payouts.",
     icon: PartyPopper,
-    badgeColor: "bg-talent-bright/15 text-talent-bright",
+    title: "Match, build, earn",
+    description: "Accept relevant invitations, collaborate in a shared workspace, and follow every allocation through your earnings ledger.",
   },
+] as const;
+
+const STANDARDS = [
+  { icon: Code2, title: "Engineering clarity", text: "Readable code, sound data models, careful tradeoffs, and maintainable architecture." },
+  { icon: GitPullRequest, title: "Delivery discipline", text: "Small verifiable increments, useful updates, and ownership through completion." },
+  { icon: ShieldCheck, title: "Production judgement", text: "Security, resilience, accessibility, and real-world operating constraints." },
 ] as const;
 
 export default async function DevelopersPage() {
   const user = await getMarketingUser();
-  const dashboardHref = user?.dashboardPath ?? null;
-  const applyHref = dashboardHref ?? "/signup?role=developer";
+  const applyHref = user?.dashboardPath ?? "/signup?role=developer";
   const applyLabel = user
     ? user.role === "client"
       ? "Go to dashboard"
-      : "Visit dashboard"
-    : null;
+      : "Open talent dashboard"
+    : "Apply to the network";
+
   return (
     <>
       <FloatingNav user={user} />
-      
-      <main className="dev-dark relative min-h-screen overflow-hidden">
-        <div className="dev-dark-grid pointer-events-none absolute inset-0 opacity-50" aria-hidden />
 
-        {/* ═══════════════════════════════════════════════════════
-            HERO SECTION — Split layout with robot
-        ═══════════════════════════════════════════════════════ */}
-        <section className="dev-hero-section relative pt-24 sm:pt-28 lg:pt-32 overflow-hidden">
-          {/* Soft ambient background */}
-          <div className="dev-hero-bg" />
+      <main className="developer-page relative min-h-screen overflow-hidden">
+        <div className="developer-code-grid pointer-events-none absolute inset-x-0 top-0 h-[58rem] opacity-70" aria-hidden />
 
-          <div className="relative z-10 mx-auto max-w-7xl px-5 sm:px-8 lg:px-12">
-            <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-2 lg:gap-6">
+        <section className="developer-hero-mesh relative overflow-hidden px-4 pb-16 pt-28 sm:px-6 sm:pb-20 sm:pt-32 lg:px-8 lg:pb-24 lg:pt-36">
+          <div className="pointer-events-none absolute left-[8%] top-28 size-56 rounded-full bg-blue-vivid/10 blur-[90px]" />
+          <div className="pointer-events-none absolute right-[4%] top-20 size-72 rounded-full bg-talent-bright/10 blur-[110px]" />
 
-              {/* ── Left Column: Copy ── */}
-              <div className="relative z-10 flex flex-col items-start pb-12 lg:pb-20">
-                {/* "Developers joined" pill */}
-                <Link
-                  href={applyHref}
-                  className="dev-hero-pill group mb-8"
-                >
-                  <span className="dev-hero-pill-badge">
-                    <span className="dev-hero-pill-dot" />
-                    500+ developers joined today
-                  </span>
-                  <span className="dev-hero-pill-cta">
-                    Join now <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
-                  </span>
-                </Link>
-
-                {/* Main headline */}
-                <h1 className="dev-hero-heading">
-                  Build the Future
-                  <br />
-                  of African
-                  <br />
-                  <span className="text-dev-gradient">Agriculture</span>
-                </h1>
-
-                {/* Sub copy */}
-                <p className="dev-hero-subtext mt-6 max-w-lg">
-                  Join a certified network of software engineers building
-                  high-impact tech infrastructure. Get matched with funded
-                  supply-chain projects and earn milestone-based payouts.
-                </p>
-
-                {/* CTA buttons */}
-                <div className="mt-9 flex flex-col gap-3.5 sm:flex-row sm:items-center">
-                  <Link
-                    href={applyHref}
-                    className="dev-hero-btn-primary"
-                  >
-                    {applyLabel ?? "Join now"} <ArrowRight className="size-4" />
-                  </Link>
-                  <Link
-                    href="#pipeline"
-                    className="dev-hero-btn-secondary"
-                  >
-                    Learn more
-                  </Link>
-                </div>
+          <div className="relative mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[minmax(0,0.9fr)_minmax(31rem,1.1fr)] lg:gap-10">
+            <Reveal className="min-w-0">
+              <div className="inline-flex items-center gap-2 rounded-full border border-blue-vivid/15 bg-white/72 px-3 py-1.5 text-[11px] font-bold text-blue-vivid shadow-soft backdrop-blur-xl">
+                <BadgeCheck className="size-3.5" aria-hidden /> Certified talent network
               </div>
-
-              {/* ── Right Column: Robot Image ── */}
-              <div className="relative flex items-end justify-center lg:justify-end">
-                {/* Glow behind the robot */}
-                <div className="dev-hero-robot-glow" />
-                <Image
-                  src="/developer-real-robot.png"
-                  alt="Futuristic AI robot representing Somahorse developer network"
-                  width={620}
-                  height={700}
-                  className="dev-hero-robot-img"
-                  priority
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* ── Stats bar ── */}
-          <DeveloperHeroClient />
-        </section>
-
-        {/* ═══════════════════════════════════════════════════════
-            VALUE PROPS
-        ═══════════════════════════════════════════════════════ */}
-        <section className="relative px-6 py-16 border-t border-border z-10">
-          <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-16">
-              <span className="cue text-talent">The Developer Experience</span>
-              <h2 className="h-section font-display mt-2">Engineered for builders, backed by AI</h2>
-            </div>
-            
-            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
-              {BENEFITS.map((benefit, idx) => {
-                const Icon = benefit.icon;
-                return (
-                  <div
-                    key={idx}
-                    className="dev-glass group relative rounded-3xl p-6 transition hover:-translate-y-1 duration-300"
-                  >
-                    <div className="inline-flex size-10 items-center justify-center rounded-2xl bg-talent/10 text-talent mb-5 group-hover:bg-talent group-hover:text-white transition-colors duration-300">
-                      <Icon className="size-5" />
-                    </div>
-                    <h3 className="font-ui text-base font-bold text-navy mb-2">{benefit.title}</h3>
-                    <p className="text-sm leading-relaxed text-muted-foreground">{benefit.desc}</p>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </section>
-
-        {/* ═══════════════════════════════════════════════════════
-            PIPELINE STEPPER
-        ═══════════════════════════════════════════════════════ */}
-        <section id="pipeline" className="relative px-6 py-20 sm:py-28 z-10">
-          <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-16">
-              <span className="cue text-talent">Onboarding Process</span>
-              <h2 className="h-section font-display mt-2">Your journey to joining Somahorse</h2>
-              <p className="max-w-xl mx-auto mt-4 text-muted-foreground leading-relaxed">
-                We maintain a vetted network of premium engineers. Here is the 4-step pipeline to get certified.
+              <h1 className="mt-6 max-w-3xl text-balance font-display text-[clamp(2.8rem,7vw,5.8rem)] font-bold leading-[0.96] tracking-[-0.055em] text-navy">
+                Build systems that move <span className="text-dev-gradient">real economies.</span>
+              </h1>
+              <p className="mt-6 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg sm:leading-8">
+                Join a vetted engineering network for serious, funded work. Get a clear scope, a shared delivery workspace, direct project communication, and transparent earnings.
               </p>
-            </div>
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                <Link href={applyHref} className="dev-hero-btn-primary">
+                  {applyLabel} <ArrowRight className="size-4" aria-hidden />
+                </Link>
+                <Link href="#how-it-works" className="dev-hero-btn-secondary">
+                  See how it works
+                </Link>
+              </div>
+              <div className="mt-8 grid max-w-lg grid-cols-3 divide-x divide-border/80 border-y border-border/70 py-4">
+                <HeroProof value="60%" label="Talent pool" />
+                <HeroProof value="Live" label="Project chat" />
+                <HeroProof value="Clear" label="Milestones" />
+              </div>
+            </Reveal>
 
-            <div className="relative grid gap-8 md:grid-cols-2 lg:grid-cols-4">
-              {/* Stepper Connecting Lines (Desktop only) */}
-              <div className="hidden lg:block absolute top-12 left-8 right-8 h-0.5 bg-gradient-to-r from-transparent via-talent/25 to-transparent -z-10" />
+            <Reveal delay={0.12} className="relative hidden min-w-0 lg:block">
+              <DeveloperWorkspacePreview />
+            </Reveal>
+          </div>
+        </section>
 
-              {PIPELINE.map((step, idx) => {
-                const Icon = step.icon;
+        <section className="border-y border-border/65 bg-white/72 py-5 backdrop-blur-xl">
+          <div className="developer-marquee-mask mx-auto flex max-w-7xl items-center gap-3 overflow-x-auto px-4 sm:justify-center sm:px-6">
+            <span className="mr-2 shrink-0 text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Built across</span>
+            {STACK.map((item) => <span key={item} className="shrink-0 rounded-full border border-border/80 bg-white px-3 py-1.5 text-[11px] font-bold text-navy-mid shadow-soft">{item}</span>)}
+          </div>
+        </section>
+
+        <section className="relative px-4 py-20 sm:px-6 sm:py-28 lg:px-8">
+          <div className="mx-auto max-w-7xl">
+            <Reveal className="max-w-3xl">
+              <p className="cue text-blue-vivid">The developer experience</p>
+              <h2 className="mt-3 text-balance font-display text-3xl font-bold tracking-tight text-navy sm:text-5xl">Less platform noise. More meaningful delivery.</h2>
+              <p className="mt-5 max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base">Somahorse connects the commercial brief, the people doing the work, the client conversation, and the money behind it.</p>
+            </Reveal>
+
+            <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {EXPERIENCE.map((item, index) => {
+                const Icon = item.icon;
                 return (
-                  <div key={idx} className="dev-glass relative flex flex-col items-start rounded-3xl p-6 sm:p-7">
-                    {/* Step badge & icon */}
-                    <div className="flex w-full items-center justify-between mb-5">
-                      <div className={`flex size-12 items-center justify-center rounded-2xl ${step.badgeColor}`}>
-                        <Icon className="size-6" />
+                  <Reveal key={item.title} delay={Math.min(index * 0.05, 0.18)} className={item.className}>
+                    <article className="developer-panel group relative h-full min-h-64 overflow-hidden rounded-[2rem] p-6 sm:p-7">
+                      <span className="absolute -right-10 -top-12 size-36 rounded-full bg-blue-vivid/6 transition duration-500 group-hover:scale-125" />
+                      <div className="relative flex h-full flex-col">
+                        <span className="grid size-11 place-items-center rounded-2xl bg-blue-vivid/10 text-blue-vivid"><Icon className="size-5" aria-hidden /></span>
+                        <h3 className="mt-auto pt-14 font-display text-xl font-bold text-navy sm:text-2xl">{item.title}</h3>
+                        <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">{item.description}</p>
                       </div>
-                      <span className="font-display text-3xl font-extrabold text-navy/10 leading-none select-none">
-                        {step.step}
-                      </span>
-                    </div>
-
-                    {/* Step Details */}
-                    <h3 className="font-ui text-lg font-bold text-navy mb-2.5">
-                      {step.title}
-                    </h3>
-                    <p className="text-sm leading-relaxed text-muted-foreground">
-                      {step.desc}
-                    </p>
-                  </div>
+                    </article>
+                  </Reveal>
                 );
               })}
             </div>
           </div>
         </section>
 
-        {/* ═══════════════════════════════════════════════════════
-            FAQ
-        ═══════════════════════════════════════════════════════ */}
-        <section id="dev-faq" className="relative px-6 py-20 border-t border-border z-10">
-          <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-14">
-              <span className="cue text-talent">Common Inquiries</span>
-              <h2 className="h-section font-display mt-2">Frequently Asked Questions</h2>
+        <section className="px-4 pb-20 sm:px-6 sm:pb-28 lg:px-8">
+          <Reveal className="developer-dark-panel relative mx-auto max-w-7xl overflow-hidden rounded-[2.25rem] px-5 py-8 text-white sm:px-10 sm:py-12 lg:px-14 lg:py-16">
+            <div className="pointer-events-none absolute -right-24 -top-32 size-[28rem] rounded-full border border-white/8 bg-blue-vivid/12" />
+            <div className="relative grid gap-10 lg:grid-cols-[0.72fr_1.28fr] lg:items-center">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-blue-sky">Built for focus</p>
+                <h2 className="mt-3 text-balance font-display text-3xl font-bold tracking-tight sm:text-4xl">One project. One source of truth.</h2>
+                <p className="mt-4 text-sm leading-7 text-white/58">You always know what is being built, who owns the next task, what the client has seen, and what the project has earned.</p>
+                <Link href={applyHref} className="mt-7 inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 text-xs font-bold text-navy transition hover:bg-blue-mist">{applyLabel} <ArrowUpRight className="size-4" aria-hidden /></Link>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <DarkFeature icon={CheckCircle2} title="Milestones move progress" text="Completing shared tasks updates the client-facing project progress automatically." />
+                <DarkFeature icon={MessageCircle} title="Replies arrive instantly" text="Project messages, unread state, and read receipts update without a refresh." />
+                <DarkFeature icon={WalletCards} title="Every allocation is visible" text="See the payment, the 60% talent pool, your share, and payout status." />
+                <DarkFeature icon={UsersRound} title="Teams share the context" text="Clients, assigned talent, and the control room collaborate in one secure space." />
+              </div>
             </div>
-            <DeveloperFAQ />
+          </Reveal>
+        </section>
+
+        <section id="how-it-works" className="relative border-y border-border/65 bg-white/58 px-4 py-20 sm:px-6 sm:py-28 lg:px-8">
+          <div className="mx-auto max-w-7xl">
+            <Reveal className="text-center">
+              <p className="cue text-blue-vivid">Certification path</p>
+              <h2 className="mx-auto mt-3 max-w-3xl text-balance font-display text-3xl font-bold tracking-tight text-navy sm:text-5xl">A high-trust network starts with a real signal.</h2>
+              <p className="mx-auto mt-5 max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base">The process is designed to understand how you think and what you can own—not how polished your résumé sounds.</p>
+            </Reveal>
+
+            <div className="relative mt-14 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <div className="developer-step-line pointer-events-none absolute left-[10%] right-[10%] top-8 hidden h-px lg:block" aria-hidden />
+              {PIPELINE.map((item, index) => {
+                const Icon = item.icon;
+                return (
+                  <Reveal key={item.step} delay={index * 0.06}>
+                    <article className="developer-panel relative h-full rounded-[1.75rem] p-5 sm:p-6">
+                      <div className="flex items-center justify-between">
+                        <span className="relative z-10 grid size-12 place-items-center rounded-2xl bg-navy text-white shadow-glow"><Icon className="size-5" aria-hidden /></span>
+                        <span className="font-display text-3xl font-bold text-blue-vivid/14">{item.step}</span>
+                      </div>
+                      <h3 className="mt-7 font-display text-lg font-bold text-navy">{item.title}</h3>
+                      <p className="mt-2.5 text-sm leading-6 text-muted-foreground">{item.description}</p>
+                    </article>
+                  </Reveal>
+                );
+              })}
+            </div>
           </div>
         </section>
 
-        {/* ═══════════════════════════════════════════════════════
-            FINAL CTA
-        ═══════════════════════════════════════════════════════ */}
-        <section className="relative px-6 py-24 z-10">
-          <div className="dev-glass max-w-5xl mx-auto overflow-hidden rounded-[34px] px-6 py-16 text-center sm:px-12 sm:py-20 relative">
-            {/* Ambient background blur */}
-            <div className="pointer-events-none absolute left-1/2 top-0 size-[560px] -translate-x-1/2 -translate-y-1/3 rounded-full bg-talent-bright/10 blur-[120px]" />
-            
-            <div className="relative">
-              <span className="cue text-talent">Take the first step</span>
-              <h2 className="h-section mx-auto max-w-3xl text-balance mt-3">
-                Ready to build resilient digital infrastructure?
-              </h2>
-              <p className="mx-auto mt-5 max-w-2xl text-muted-foreground leading-relaxed">
-                Apply today, pass our logistics coding sandbox, and start earning by solving high-impact supply chain challenges.
-              </p>
-              <div className="mt-10 flex flex-col sm:flex-row gap-3 items-center justify-center">
-                <Link
-                  href={applyHref}
-                  className="dev-hero-btn-primary w-full sm:w-auto"
-                >
-                  {applyLabel ?? "Join Network"} <ArrowUpRight className="size-4" />
-                </Link>
-                <Link
-                  href="/"
-                  className="dev-hero-btn-secondary w-full sm:w-auto"
-                >
-                  Back to homepage
-                </Link>
+        <section className="relative px-4 py-20 sm:px-6 sm:py-28 lg:px-8">
+          <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.82fr_1.18fr] lg:items-start">
+            <Reveal>
+              <p className="cue text-blue-vivid">What earns certification</p>
+              <h2 className="mt-3 text-balance font-display text-3xl font-bold tracking-tight text-navy sm:text-5xl">Strong signals, not buzzwords.</h2>
+              <p className="mt-5 max-w-xl text-sm leading-7 text-muted-foreground sm:text-base">We look for engineers who can turn a real operating problem into software people can trust.</p>
+              <div className="mt-7 flex flex-wrap gap-2">
+                {["Frontend", "Backend", "Mobile", "Data", "AI engineering", "DevOps", "Product design"].map((role) => <span key={role} className="rounded-full border border-blue-vivid/12 bg-blue-vivid/6 px-3 py-1.5 text-[11px] font-bold text-navy-mid">{role}</span>)}
               </div>
+            </Reveal>
+            <div className="grid gap-3">
+              {STANDARDS.map((standard, index) => {
+                const Icon = standard.icon;
+                return (
+                  <Reveal key={standard.title} delay={index * 0.05}>
+                    <div className="developer-panel flex items-start gap-4 rounded-[1.5rem] p-5 sm:p-6">
+                      <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-blue-vivid/10 text-blue-vivid"><Icon className="size-5" aria-hidden /></span>
+                      <div><h3 className="font-display text-lg font-bold text-navy">{standard.title}</h3><p className="mt-1.5 text-sm leading-6 text-muted-foreground">{standard.text}</p></div>
+                    </div>
+                  </Reveal>
+                );
+              })}
             </div>
           </div>
+        </section>
+
+        <section className="px-4 pb-20 sm:px-6 sm:pb-28 lg:px-8">
+          <Reveal className="mx-auto grid max-w-7xl overflow-hidden rounded-[2rem] border border-blue-vivid/12 bg-white shadow-elevated lg:grid-cols-[1fr_0.8fr]">
+            <div className="p-6 sm:p-10 lg:p-12">
+              <p className="cue text-blue-vivid">A transparent commercial model</p>
+              <h2 className="mt-3 max-w-xl font-display text-3xl font-bold tracking-tight text-navy sm:text-4xl">Know what the project paid and what is owed to talent.</h2>
+              <p className="mt-4 max-w-xl text-sm leading-7 text-muted-foreground">After each verified client payment, the platform records a 60% talent-pool allocation. Your dashboard separates what is owed from what has actually been paid out.</p>
+              <div className="mt-7 flex items-center gap-3 rounded-2xl bg-blue-light/55 p-4 text-xs leading-5 text-navy-mid"><LockKeyhole className="size-5 shrink-0 text-blue-vivid" aria-hidden /> Payment records and project communication stay visible only to authorized participants.</div>
+            </div>
+            <div className="bg-gradient-to-br from-navy to-navy-mid p-6 text-white sm:p-10 lg:p-12">
+              <div className="flex items-center justify-between"><span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/45">Example verified payment</span><Coins className="size-5 text-blue-sky" aria-hidden /></div>
+              <p className="mt-4 font-display text-4xl font-bold">R100,000</p>
+              <div className="mt-7 space-y-3">
+                <PaymentLine label="Talent pool · 60%" value="R60,000" strong />
+                <PaymentLine label="Platform delivery share · 40%" value="R40,000" />
+              </div>
+              <div className="mt-6 border-t border-white/10 pt-5"><p className="text-xs font-bold text-white/80">For multi-person teams</p><p className="mt-1 text-[11px] leading-5 text-white/48">The talent pool is divided across assigned team members and tracked per person in the earnings ledger.</p></div>
+            </div>
+          </Reveal>
+        </section>
+
+        <section id="dev-faq" className="border-t border-border/65 bg-white/52 px-4 py-20 sm:px-6 sm:py-28 lg:px-8">
+          <div className="mx-auto max-w-6xl">
+            <Reveal className="text-center">
+              <p className="cue text-blue-vivid">Good questions</p>
+              <h2 className="mt-3 font-display text-3xl font-bold tracking-tight text-navy sm:text-5xl">Before you apply</h2>
+            </Reveal>
+            <Reveal delay={0.08} className="mt-12"><DeveloperFAQ /></Reveal>
+          </div>
+        </section>
+
+        <section className="px-4 py-20 sm:px-6 sm:py-28 lg:px-8">
+          <Reveal className="developer-cta relative mx-auto max-w-6xl overflow-hidden rounded-[2.25rem] px-6 py-16 text-center text-white sm:px-12 sm:py-20">
+            <div className="pointer-events-none absolute left-1/2 top-0 size-[30rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-vivid/35 blur-[100px]" />
+            <div className="relative">
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/8 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-blue-sky"><Cpu className="size-3.5" aria-hidden /> For serious builders</span>
+              <h2 className="mx-auto mt-5 max-w-3xl text-balance font-display text-3xl font-bold tracking-tight sm:text-5xl">Your next project should be worth the effort.</h2>
+              <p className="mx-auto mt-5 max-w-2xl text-sm leading-7 text-white/58 sm:text-base">Bring your judgement, craft, and ownership. Somahorse brings the scope, workspace, project context, and transparent commercial record.</p>
+              <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
+                <Link href={applyHref} className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-white px-6 py-3.5 text-sm font-bold text-navy shadow-glow transition hover:bg-blue-mist sm:w-auto">{applyLabel} <ArrowUpRight className="size-4" aria-hidden /></Link>
+                <Link href="/" className="inline-flex w-full items-center justify-center rounded-full border border-white/15 bg-white/7 px-6 py-3.5 text-sm font-bold text-white transition hover:bg-white/12 sm:w-auto">Explore Somahorse</Link>
+              </div>
+            </div>
+          </Reveal>
         </section>
       </main>
 
       <Footer />
     </>
   );
+}
+
+function DeveloperWorkspacePreview() {
+  return (
+    <div className="relative mx-auto max-w-2xl lg:ml-auto">
+      <div className="pointer-events-none absolute -inset-6 rounded-[3rem] bg-gradient-to-br from-blue-vivid/16 to-talent-bright/10 blur-3xl" />
+      <div className="developer-console relative overflow-hidden rounded-[2rem] border border-white/15 p-3 shadow-[0_40px_100px_-45px_rgba(4,18,54,.9)] sm:p-4">
+        <div className="flex items-center justify-between border-b border-white/10 px-2 pb-3">
+          <div className="flex items-center gap-2"><span className="size-2.5 rounded-full bg-blue-sky" /><span className="size-2.5 rounded-full bg-blue-vivid" /><span className="size-2.5 rounded-full bg-talent-bright" /></div>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/7 px-3 py-1 text-[9px] font-bold text-white/58"><LockKeyhole className="size-3" aria-hidden /> Private workspace</span>
+        </div>
+
+        <div className="grid gap-3 pt-3 sm:grid-cols-[1fr_0.72fr]">
+          <div className="rounded-[1.4rem] border border-white/10 bg-white/6 p-4 sm:p-5">
+            <div className="flex items-start justify-between gap-3"><div><p className="text-[9px] font-bold uppercase tracking-[0.14em] text-blue-sky">Active project</p><h2 className="mt-1.5 font-display text-lg font-bold text-white">Cold-chain visibility</h2><p className="mt-1 text-[10px] text-white/42">Shared delivery plan</p></div><span className="rounded-full bg-blue-vivid/20 px-2.5 py-1 text-[9px] font-bold text-blue-sky">In build</span></div>
+            <div className="mt-5 flex items-end justify-between"><div><p className="font-display text-3xl font-bold text-white">64%</p><p className="mt-0.5 text-[9px] text-white/38">8 of 12 tasks complete</p></div><span className="grid size-10 place-items-center rounded-2xl bg-blue-vivid/15 text-blue-sky"><Check className="size-4" aria-hidden /></span></div>
+            <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/8"><div className="h-full w-[64%] rounded-full bg-gradient-to-r from-blue-vivid to-talent-bright" /></div>
+            <div className="mt-5 space-y-2">
+              <PreviewTask label="Map temperature events" done />
+              <PreviewTask label="Add exception alerts" done />
+              <PreviewTask label="Validate offline sync" />
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div className="rounded-[1.4rem] border border-white/10 bg-white/6 p-4">
+              <div className="flex items-center justify-between"><p className="text-[9px] font-bold uppercase tracking-[0.12em] text-white/42">Project chat</p><span className="size-2 rounded-full bg-blue-sky shadow-[0_0_12px_rgba(125,211,252,.8)]" /></div>
+              <div className="mt-4 rounded-2xl rounded-bl-md bg-white/10 p-3"><p className="text-[9px] font-bold text-blue-sky">Lerato · Client</p><p className="mt-1 text-[10px] leading-4 text-white/70">The warehouse team approved the alert flow.</p></div>
+              <div className="ml-5 mt-2 rounded-2xl rounded-br-md bg-blue-vivid p-3"><p className="text-[10px] leading-4 text-white">Great — I&apos;ll finish offline validation next.</p><p className="mt-1 text-right text-[8px] text-white/55">Read ✓✓</p></div>
+            </div>
+            <div className="rounded-[1.4rem] border border-white/10 bg-gradient-to-br from-blue-vivid/30 to-talent-bright/18 p-4">
+              <div className="flex items-center justify-between"><span className="text-[9px] font-bold uppercase tracking-[0.12em] text-white/45">Your earnings</span><CircleDollarSign className="size-4 text-blue-sky" aria-hidden /></div>
+              <p className="mt-2 font-display text-2xl font-bold text-white">R18,000</p>
+              <div className="mt-3 flex items-center justify-between text-[9px]"><span className="text-white/42">From verified payment</span><span className="rounded-full bg-white/10 px-2 py-1 font-bold text-blue-sky">Owed</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="absolute -bottom-5 -left-3 hidden items-center gap-3 rounded-2xl border border-blue-vivid/10 bg-white/90 px-4 py-3 shadow-elevated backdrop-blur-xl sm:flex"><span className="grid size-9 place-items-center rounded-xl bg-blue-vivid/10 text-blue-vivid"><MessageCircle className="size-4" aria-hidden /></span><div><p className="text-[10px] font-bold text-navy">New client message</p><p className="mt-0.5 text-[9px] text-muted-foreground">Just now · no refresh</p></div></div>
+    </div>
+  );
+}
+
+function PreviewTask({ label, done = false }: { label: string; done?: boolean }) {
+  return <div className="flex items-center gap-2 rounded-xl bg-white/5 px-3 py-2.5"><span className={`grid size-5 shrink-0 place-items-center rounded-full ${done ? "bg-blue-vivid text-white" : "border border-white/15 text-white/25"}`}>{done ? <Check className="size-3" aria-hidden /> : <Clock3 className="size-3" aria-hidden />}</span><span className={`truncate text-[10px] ${done ? "text-white/42 line-through" : "font-bold text-white/72"}`}>{label}</span></div>;
+}
+
+function HeroProof({ value, label }: { value: string; label: string }) {
+  return <div className="px-3 first:pl-0"><p className="font-display text-xl font-bold text-navy sm:text-2xl">{value}</p><p className="mt-1 truncate text-[9px] font-bold uppercase tracking-[0.08em] text-muted-foreground sm:text-[10px]">{label}</p></div>;
+}
+
+function DarkFeature({ icon: Icon, title, text }: { icon: typeof CheckCircle2; title: string; text: string }) {
+  return <div className="rounded-[1.5rem] border border-white/10 bg-white/6 p-5 backdrop-blur-xl"><span className="grid size-9 place-items-center rounded-xl bg-blue-vivid/18 text-blue-sky"><Icon className="size-4" aria-hidden /></span><h3 className="mt-5 font-display text-base font-bold text-white">{title}</h3><p className="mt-2 text-xs leading-5 text-white/48">{text}</p></div>;
+}
+
+function PaymentLine({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
+  return <div className={`flex items-center justify-between gap-4 rounded-2xl px-4 py-3 ${strong ? "bg-blue-vivid/25" : "bg-white/6"}`}><span className={`text-xs ${strong ? "font-bold text-blue-sky" : "text-white/48"}`}>{label}</span><span className="font-display text-base font-bold text-white">{value}</span></div>;
 }

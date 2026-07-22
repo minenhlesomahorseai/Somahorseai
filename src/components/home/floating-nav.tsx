@@ -22,9 +22,11 @@ const NAV = [
 export function FloatingNav({ user = null }: { user?: MarketingUser | null }) {
   const pathname = usePathname();
   const isDevPage = pathname === "/developers";
+  const isAgriPage = pathname === "/agriculture";
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const { scrollY } = useScroll();
+  const isAgriTop = isAgriPage && !scrolled;
 
   useMotionValueEvent(scrollY, "change", (latest) => setScrolled(latest > 24));
 
@@ -54,10 +56,10 @@ export function FloatingNav({ user = null }: { user?: MarketingUser | null }) {
         className={[
           "flex items-center w-full relative transition-all duration-300",
           scrolled
-            ? "max-w-5xl rounded-full border border-border bg-white/85 shadow-nav backdrop-blur-xl px-3 py-2"
-            : pathname === "/agriculture"
-              ? "max-w-5xl rounded-full agri-glass px-3 py-2"
-              : "max-w-[1400px] border-transparent px-3 py-2",
+            ? isAgriPage
+              ? "max-w-5xl rounded-full border border-emerald-200/60 bg-white/85 shadow-nav backdrop-blur-xl px-3 py-2"
+              : "max-w-5xl rounded-full border border-border bg-white/85 shadow-nav backdrop-blur-xl px-3 py-2"
+            : "max-w-[1400px] border-transparent px-3 py-2",
         ].join(" ")}
       >
         {/* Logo */}
@@ -70,11 +72,11 @@ export function FloatingNav({ user = null }: { user?: MarketingUser | null }) {
             alt="Somahorse.ai"
             width={36}
             height={36}
-            className="size-9 rounded-full object-contain cursor-pointer"
+            className={`size-9 rounded-full object-contain cursor-pointer ${isAgriPage ? "agri-logo-green" : ""}`}
             priority
           />
-          <span className="text-[15px] font-bold hidden sm:inline transition-colors text-navy">
-            Somahorse<span className="text-blue-vivid">.ai</span>
+          <span className={`text-[15px] font-bold hidden sm:inline transition-colors ${isAgriPage ? "text-emerald-700" : "text-navy"}`}>
+            Somahorse<span className={isAgriPage ? "text-emerald-500" : "text-blue-vivid"}>.ai</span>
           </span>
         </Link>
 
@@ -92,10 +94,18 @@ export function FloatingNav({ user = null }: { user?: MarketingUser | null }) {
                 <Link
                   href={item.href}
                   className={[
-                    "text-[13px] font-medium transition-colors focus:outline-none px-3.5 py-1.5 relative",
+                    "relative px-3.5 py-1.5 text-[13px] font-medium transition-colors focus:outline-none",
                     pathname === item.href
-                      ? "text-navy"
-                      : "text-muted-foreground hover:text-navy",
+                      ? isAgriTop
+                        ? "text-white after:absolute after:inset-x-3.5 after:-bottom-1 after:h-0.5 after:rounded-full after:bg-emerald-300"
+                        : isAgriPage
+                          ? "text-emerald-700"
+                          : "text-navy"
+                      : isAgriTop
+                        ? "text-white/80 hover:text-white"
+                        : isAgriPage
+                          ? "text-muted-foreground hover:text-emerald-700"
+                          : "text-muted-foreground hover:text-navy",
                   ].join(" ")}
                 >
                   {item.label}
@@ -112,14 +122,14 @@ export function FloatingNav({ user = null }: { user?: MarketingUser | null }) {
               {user.startProjectPath ? (
                 <Link
                   href={user.startProjectPath}
-                  className="inline-flex items-center gap-1.5 px-4 py-1.5 text-[13px] font-medium bg-navy-mid text-white rounded-full hover:bg-navy transition-all focus:outline-none"
+                  className={`inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-[13px] font-medium transition-all focus:outline-none ${isAgriTop ? "bg-white text-emerald-800 hover:bg-white/90" : isAgriPage ? "bg-emerald-600 text-white hover:bg-emerald-700" : "bg-navy-mid text-white hover:bg-navy"}`}
                 >
                   Start a project
                 </Link>
               ) : (
                 <Link
                   href={user.dashboardPath}
-                  className="flex items-center gap-1.5 inline-flex items-center gap-1.5 px-4 py-1.5 text-[13px] font-medium bg-navy-mid text-white rounded-full hover:bg-navy transition-all focus:outline-none"
+                  className={`inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-[13px] font-medium transition-all focus:outline-none ${isAgriTop ? "bg-white text-emerald-800 hover:bg-white/90" : isAgriPage ? "bg-emerald-600 text-white hover:bg-emerald-700" : "bg-navy-mid text-white hover:bg-navy"}`}
                 >
                   <LayoutDashboard className="size-4" aria-hidden />
                   {dashboardLabel}
@@ -136,13 +146,13 @@ export function FloatingNav({ user = null }: { user?: MarketingUser | null }) {
             >
               <Link
                 href="/login"
-                className="text-[13px] font-medium text-navy hover:text-blue-vivid transition-colors focus:outline-none px-3.5 py-1.5"
+                className={`px-3.5 py-1.5 text-[13px] font-medium transition-colors focus:outline-none ${isAgriTop ? "text-white hover:text-white/80" : isAgriPage ? "text-navy hover:text-emerald-600" : "text-navy hover:text-blue-vivid"}`}
               >
                 Sign in
               </Link>
               <Link
                 href="/signup"
-                className="inline-flex items-center gap-1.5 px-4 py-1.5 text-[13px] font-medium bg-navy-mid text-white rounded-full hover:bg-navy transition-all focus:outline-none"
+                className={`inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-[13px] font-medium transition-all focus:outline-none ${isAgriTop ? "bg-white text-emerald-800 hover:bg-white/90" : isAgriPage ? "bg-emerald-600 text-white hover:bg-emerald-700" : "bg-navy-mid text-white hover:bg-navy"}`}
               >
                 Sign up
               </Link>
@@ -160,7 +170,7 @@ export function FloatingNav({ user = null }: { user?: MarketingUser | null }) {
               animate={{ opacity: 1 }}
               transition={{ delay: 0.3 }}
             >
-              <Menu className="h-5 w-5 text-navy" aria-hidden />
+              <Menu className={`h-5 w-5 ${isAgriTop ? "text-white" : "text-navy"}`} aria-hidden />
             </motion.button>
           </div>
         </div>
@@ -191,10 +201,10 @@ export function FloatingNav({ user = null }: { user?: MarketingUser | null }) {
                     alt=""
                     width={34}
                     height={34}
-                    className="size-8 rounded-full object-contain"
+                    className={`size-8 rounded-full object-contain ${isAgriPage ? "agri-logo-green" : ""}`}
                   />
-                  <span className="text-lg font-bold text-navy">
-                    Somahorse<span className="text-blue-vivid">.ai</span>
+                  <span className={`text-lg font-bold ${isAgriPage ? "text-emerald-700" : "text-navy"}`}>
+                    Somahorse<span className={isAgriPage ? "text-emerald-500" : "text-blue-vivid"}>.ai</span>
                   </span>
                 </Link>
                 <button
