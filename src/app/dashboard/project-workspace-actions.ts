@@ -305,6 +305,8 @@ function revalidateWorkspacePaths(projectId: string) {
   revalidatePath(`/dashboard/talent/projects/${projectId}`);
   revalidatePath(`/admin/projects/${projectId}/workspace`);
   revalidatePath("/dashboard/client/projects");
+  revalidatePath("/dashboard/client/messages");
   revalidatePath("/dashboard/talent/projects");
+  revalidatePath("/dashboard/talent/messages");
   revalidatePath("/dashboard/talent/payments");
 }

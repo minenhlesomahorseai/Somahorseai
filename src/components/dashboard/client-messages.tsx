@@ -22,14 +22,16 @@ import type { ClientMessageThread } from "@/lib/dashboard/client-workspace-data"
 import type { WorkspaceMessage, WorkspaceMessageRead } from "@/lib/projects/workspace";
 import { createClient } from "@/lib/supabase/client";
 
-export function ClientMessages({
+export function ProjectMessages({
   initialThreads,
   currentUserId,
   initialProjectId,
+  viewerRole,
 }: {
   initialThreads: ClientMessageThread[];
   currentUserId: string;
   initialProjectId: string | null;
+  viewerRole: "client" | "talent";
 }) {
   const router = useRouter();
   const [threads, setThreads] = useState(initialThreads);
@@ -39,6 +41,7 @@ export function ClientMessages({
   const [sending, startSending] = useTransition();
   const endRef = useRef<HTMLDivElement>(null);
   const activeThread = threads.find((thread) => thread.projectId === activeProjectId) ?? null;
+  const dashboardBase = `/dashboard/${viewerRole}`;
   const projectIds = useMemo(() => new Set(initialThreads.map((thread) => thread.projectId)), [initialThreads]);
   const nameById = useMemo(
     () => new Map(initialThreads.flatMap((thread) => thread.members.map((member) => [member.id, member.fullName] as const))),
@@ -114,7 +117,7 @@ export function ClientMessages({
   const selectThread = (projectId: string) => {
     setActiveProjectId(projectId);
     setError(null);
-    router.replace(`/dashboard/client/messages?project=${projectId}`, { scroll: false });
+    router.replace(`${dashboardBase}/messages?project=${projectId}`, { scroll: false });
   };
 
   const submitMessage = (event: FormEvent<HTMLFormElement>) => {
@@ -136,12 +139,12 @@ export function ClientMessages({
   if (!threads.length) {
     return (
       <div className="space-y-6">
-        <MessagesHeader />
+        <MessagesHeader viewerRole={viewerRole} />
         <section className="workspace-glass flex min-h-[28rem] flex-col items-center justify-center rounded-[2rem] px-6 text-center">
           <span className="grid size-16 place-items-center rounded-3xl bg-blue-vivid/10 text-blue-vivid"><MessagesSquare className="size-7" aria-hidden /></span>
           <h2 className="mt-5 font-display text-2xl font-bold text-navy">No project conversations yet</h2>
-          <p className="mt-2 max-w-md text-sm leading-6 text-muted-foreground">Your secure group chat opens when a funded project and its team are ready.</p>
-          <Link href="/dashboard/client/projects" className="mt-6 inline-flex items-center gap-2 rounded-full bg-navy px-5 py-2.5 text-sm font-bold text-white shadow-glow">View projects <ArrowUpRight className="size-4" aria-hidden /></Link>
+          <p className="mt-2 max-w-md text-sm leading-6 text-muted-foreground">Your secure group chat opens when you join an active project workspace.</p>
+          <Link href={`${dashboardBase}/projects`} className="mt-6 inline-flex items-center gap-2 rounded-full bg-navy px-5 py-2.5 text-sm font-bold text-white shadow-glow">View projects <ArrowUpRight className="size-4" aria-hidden /></Link>
         </section>
       </div>
     );
@@ -149,7 +152,7 @@ export function ClientMessages({
 
   return (
     <div className="min-w-0 space-y-5">
-      <MessagesHeader />
+      <MessagesHeader viewerRole={viewerRole} />
       <section className="workspace-chat min-w-0 overflow-hidden rounded-[2rem] border border-white/75 shadow-elevated lg:grid lg:h-[calc(100vh-11.5rem)] lg:min-h-[38rem] lg:grid-cols-[20rem_minmax(0,1fr)]">
         <aside className="border-b border-border/60 bg-white/62 p-3 lg:border-b-0 lg:border-r lg:p-4">
           <div className="mb-3 hidden items-center justify-between px-1 lg:flex"><div><p className="font-display text-lg font-bold text-navy">Projects</p><p className="text-[10px] text-muted-foreground">Choose a secure group</p></div><span className="grid size-8 place-items-center rounded-full bg-blue-vivid/10 text-blue-vivid"><FolderKanban className="size-4" aria-hidden /></span></div>
@@ -171,8 +174,8 @@ export function ClientMessages({
         {activeThread ? (
           <div className="flex min-h-[34rem] min-w-0 flex-col lg:min-h-0">
             <header className="flex items-center justify-between gap-3 border-b border-border/60 bg-white/78 px-4 py-3.5 sm:px-5">
-              <div className="flex min-w-0 items-center gap-3"><span className="relative grid size-10 shrink-0 place-items-center rounded-full bg-gradient-to-br from-navy to-blue-vivid text-white"><UsersRound className="size-5" aria-hidden /><span className="absolute bottom-0 right-0 size-2.5 rounded-full border-2 border-white bg-accent-teal" /></span><div className="min-w-0"><p className="truncate text-sm font-bold text-navy">{activeThread.projectTitle}</p><p className="truncate text-[10px] text-muted-foreground">{activeThread.members.length} certified {activeThread.members.length === 1 ? "developer" : "developers"} · Somahorse support</p></div></div>
-              <Link href={`/dashboard/client/projects/${activeThread.projectId}`} className="grid size-9 shrink-0 place-items-center rounded-full border border-border bg-white text-navy-mid" aria-label="Open project workspace"><ArrowUpRight className="size-4" aria-hidden /></Link>
+              <div className="flex min-w-0 items-center gap-3"><span className="relative grid size-10 shrink-0 place-items-center rounded-full bg-gradient-to-br from-navy to-blue-vivid text-white"><UsersRound className="size-5" aria-hidden /><span className="absolute bottom-0 right-0 size-2.5 rounded-full border-2 border-white bg-accent-teal" /></span><div className="min-w-0"><p className="truncate text-sm font-bold text-navy">{activeThread.projectTitle}</p><p className="truncate text-[10px] text-muted-foreground">{activeThread.members.filter((member) => member.id !== currentUserId).length} other project {activeThread.members.filter((member) => member.id !== currentUserId).length === 1 ? "participant" : "participants"} · Somahorse support</p></div></div>
+              <Link href={`${dashboardBase}/projects/${activeThread.projectId}`} className="grid size-9 shrink-0 place-items-center rounded-full border border-border bg-white text-navy-mid" aria-label="Open project workspace"><ArrowUpRight className="size-4" aria-hidden /></Link>
             </header>
 
             <div className="flex-1 space-y-3 overflow-y-auto bg-[linear-gradient(180deg,rgba(239,246,255,.55),rgba(255,255,255,.72))] p-4 sm:p-6">
@@ -188,14 +191,14 @@ export function ClientMessages({
                     </div>
                   </div>
                 );
-              }) : <div className="flex h-full min-h-64 flex-col items-center justify-center text-center"><MessageCircle className="size-8 text-blue-vivid/25" aria-hidden /><p className="mt-3 text-sm font-bold text-navy">Start the project conversation</p><p className="mt-1 max-w-xs text-xs leading-5 text-muted-foreground">Ask the developers about progress, decisions, or anything you need explained.</p></div>}
+              }) : <div className="flex h-full min-h-64 flex-col items-center justify-center text-center"><MessageCircle className="size-8 text-blue-vivid/25" aria-hidden /><p className="mt-3 text-sm font-bold text-navy">Start the project conversation</p><p className="mt-1 max-w-xs text-xs leading-5 text-muted-foreground">{viewerRole === "talent" ? "Share an update, ask the client a question, or coordinate with your teammates." : "Ask the developers about progress, decisions, or anything you need explained."}</p></div>}
               <div ref={endRef} />
             </div>
 
             {error ? <p className="border-t border-accent-amber/15 bg-accent-amber/8 px-4 py-2 text-xs text-accent-amber" role="alert">{error}</p> : null}
             <form onSubmit={submitMessage} className="border-t border-border/60 bg-white/85 p-3 sm:p-4">
-              <div className="mb-2 flex items-center gap-1.5 px-1 text-[9px] font-semibold text-accent-teal"><LockKeyhole className="size-3" aria-hidden /> Only this project&apos;s client, developers, and Somahorse admins can read this chat.</div>
-              <div className="flex items-end gap-2 rounded-2xl border border-border/70 bg-white p-2 shadow-soft"><textarea value={messageText} onChange={(event) => setMessageText(event.target.value)} placeholder="Write to your project team…" rows={1} maxLength={2000} className="max-h-32 min-h-10 min-w-0 flex-1 resize-none bg-transparent px-2 py-2.5 text-sm text-navy outline-none placeholder:text-muted-foreground/60" /><button type="submit" disabled={sending || !messageText.trim()} aria-label="Send message" className="grid size-10 shrink-0 place-items-center rounded-xl bg-navy text-white shadow-glow transition hover:bg-navy-mid disabled:opacity-40">{sending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Send className="size-4" aria-hidden />}</button></div>
+              <div className="mb-2 flex items-center gap-1.5 px-1 text-[9px] font-semibold text-accent-teal"><LockKeyhole className="size-3" aria-hidden /> Only this project&apos;s client, assigned talent, and Somahorse admins can read this chat.</div>
+              <div className="flex items-end gap-2 rounded-2xl border border-border/70 bg-white p-2 shadow-soft"><textarea value={messageText} onChange={(event) => setMessageText(event.target.value)} placeholder={viewerRole === "talent" ? "Reply to the project group…" : "Write to your project team…"} rows={1} maxLength={2000} className="max-h-32 min-h-10 min-w-0 flex-1 resize-none bg-transparent px-2 py-2.5 text-sm text-navy outline-none placeholder:text-muted-foreground/60" /><button type="submit" disabled={sending || !messageText.trim()} aria-label="Send message" className="grid size-10 shrink-0 place-items-center rounded-xl bg-navy text-white shadow-glow transition hover:bg-navy-mid disabled:opacity-40">{sending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Send className="size-4" aria-hidden />}</button></div>
             </form>
           </div>
         ) : null}
@@ -204,8 +207,8 @@ export function ClientMessages({
   );
 }
 
-function MessagesHeader() {
-  return <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="cue text-navy-mid/70">Secure project inbox</p><h1 className="mt-1 font-display text-3xl font-bold tracking-tight text-navy sm:text-4xl">Messages</h1><p className="mt-1.5 max-w-2xl text-sm leading-6 text-muted-foreground">Talk to the certified developers on each of your projects. Messages and read receipts update instantly.</p></div><span className="inline-flex w-fit items-center gap-2 rounded-full border border-accent-teal/15 bg-white/70 px-3.5 py-2 text-[10px] font-bold text-accent-teal shadow-soft"><ShieldCheck className="size-4" aria-hidden /> Participant-only</span></div>;
+function MessagesHeader({ viewerRole }: { viewerRole: "client" | "talent" }) {
+  return <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="cue text-navy-mid/70">Secure project inbox</p><h1 className="mt-1 font-display text-3xl font-bold tracking-tight text-navy sm:text-4xl">Messages</h1><p className="mt-1.5 max-w-2xl text-sm leading-6 text-muted-foreground">{viewerRole === "talent" ? "Talk to clients, teammates, and Somahorse support across your assigned projects. Messages and read receipts update instantly." : "Talk to the certified developers on each of your projects. Messages and read receipts update instantly."}</p></div><span className="inline-flex w-fit items-center gap-2 rounded-full border border-accent-teal/15 bg-white/70 px-3.5 py-2 text-[10px] font-bold text-accent-teal shadow-soft"><ShieldCheck className="size-4" aria-hidden /> Participant-only</span></div>;
 }
 
 function ReadStatus({ message, reads }: { message: WorkspaceMessage; reads: WorkspaceMessageRead[] }) {

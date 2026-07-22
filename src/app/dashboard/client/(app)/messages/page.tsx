@@ -1,4 +1,4 @@
-import { ClientMessages } from "@/components/dashboard/client-messages";
+import { ProjectMessages } from "@/components/dashboard/client-messages";
 import { fetchClientMessageThreads } from "@/lib/dashboard/client-workspace-data";
 import { loadClientSession } from "@/lib/dashboard/session";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -16,5 +16,5 @@ export default async function MessagesPage({
     ? query.project
     : threads[0]?.projectId;
 
-  return <ClientMessages initialThreads={threads} currentUserId={userId} initialProjectId={selectedProjectId ?? null} />;
+  return <ProjectMessages initialThreads={threads} currentUserId={userId} initialProjectId={selectedProjectId ?? null} viewerRole="client" />;
 }

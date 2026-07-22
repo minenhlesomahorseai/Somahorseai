@@ -47,6 +47,9 @@ export function TalentDashboardShell({
     () => notificationItems.filter((item) => !item.read_at && !seenNotifications.includes(item.id)).map((item) => item.id),
     [notificationItems, seenNotifications]
   );
+  const unreadMessageCount = notificationItems.filter(
+    (item) => item.type === "project_message" && !item.read_at && !seenNotifications.includes(item.id)
+  ).length;
 
   useEffect(() => {
     const client = createClient();
@@ -121,7 +124,11 @@ export function TalentDashboardShell({
             {centreItems.map((item) => {
               const active = isNavItemActive(pathname, item.href);
               const Icon = item.icon;
-              const badge = item.href.endsWith("/invites") && inviteCount > 0 ? inviteCount : null;
+              const badge = item.href.endsWith("/invites") && inviteCount > 0
+                ? inviteCount
+                : item.href.endsWith("/messages") && unreadMessageCount > 0
+                  ? unreadMessageCount
+                  : null;
               return (
                 <Link
                   key={item.href}
@@ -224,7 +231,11 @@ export function TalentDashboardShell({
           {primary.map((item) => {
             const active = isNavItemActive(pathname, item.href);
             const Icon = item.icon;
-            const badge = item.href.endsWith("/invites") && inviteCount > 0 ? inviteCount : null;
+              const badge = item.href.endsWith("/invites") && inviteCount > 0
+                ? inviteCount
+                : item.href.endsWith("/messages") && unreadMessageCount > 0
+                  ? unreadMessageCount
+                  : null;
             return (
               <li key={item.href} className="flex-1">
                 <Link
@@ -255,11 +266,12 @@ export function TalentDashboardShell({
               }`}
             >
               <span
-                className={`flex h-7 w-12 items-center justify-center rounded-full transition ${
+                className={`relative flex h-7 w-12 items-center justify-center rounded-full transition ${
                   moreActive ? "bg-blue-vivid/12 text-blue-vivid" : "text-muted-foreground"
                 }`}
               >
                 <MoreHorizontal className="size-[18px]" aria-hidden />
+                {unreadMessageCount > 0 ? <span className="absolute right-2 top-0 size-2 rounded-full bg-accent-amber ring-2 ring-white" /> : null}
               </span>
               More
             </button>
@@ -317,6 +329,7 @@ export function TalentDashboardShell({
                 {overflow.map((item) => {
                   const active = isNavItemActive(pathname, item.href);
                   const Icon = item.icon;
+                  const messageBadge = item.href.endsWith("/messages") && unreadMessageCount > 0;
                   return (
                     <Link
                       key={item.href}
@@ -328,8 +341,9 @@ export function TalentDashboardShell({
                           : "border-white/80 bg-white/60 active:scale-[0.98]"
                       }`}
                     >
-                      <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-white text-blue-vivid shadow-soft">
+                      <span className="relative grid size-10 shrink-0 place-items-center rounded-xl bg-white text-blue-vivid shadow-soft">
                         <Icon className="size-5" aria-hidden />
+                        {messageBadge ? <span className="absolute -right-1 -top-1 grid min-w-4 place-items-center rounded-full bg-accent-amber px-1 text-[8px] font-bold leading-4 text-white ring-2 ring-white">{unreadMessageCount > 9 ? "9+" : unreadMessageCount}</span> : null}
                       </span>
                       <span className="min-w-0">
                         <span className="block text-sm font-bold text-navy">{item.label}</span>
@@ -427,7 +441,7 @@ function NotificationPanel({
           {notifications.map((item) => {
             const unread = !item.read_at && !seen.includes(item.id);
             return (
-              <Link href={item.project_id ? `/dashboard/talent/projects/${item.project_id}?tab=messages` : "/dashboard/talent"} onClick={onSelect} key={item.id} className="relative block rounded-2xl bg-white/65 px-3 py-3 transition hover:bg-white">
+              <Link href={item.project_id ? item.type === "project_message" ? `/dashboard/talent/messages?project=${item.project_id}` : `/dashboard/talent/projects/${item.project_id}` : "/dashboard/talent"} onClick={onSelect} key={item.id} className="relative block rounded-2xl bg-white/65 px-3 py-3 transition hover:bg-white">
                 {unread ? <span className="absolute right-3 top-3 size-2 rounded-full bg-blue-vivid" /> : null}
                 <p className="pr-4 text-xs font-bold text-navy">{item.title}</p>
                 <p className="mt-1 text-[11px] leading-5 text-muted-foreground">{item.message}</p>
@@ -443,6 +457,7 @@ function NotificationPanel({
           <p className="mt-1 text-[11px] text-muted-foreground">New invites and project updates will appear here.</p>
         </div>
       )}
+      <Link href="/dashboard/talent/messages" onClick={onSelect} className="mt-2 flex items-center justify-center rounded-2xl py-2.5 text-xs font-bold text-navy-mid transition hover:bg-white/70">Open all messages</Link>
     </motion.div>
   );
 }

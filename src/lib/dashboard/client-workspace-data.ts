@@ -49,6 +49,7 @@ export interface ClientMessageMember {
   id: string;
   fullName: string;
   role: string;
+  participantRole?: "client" | "talent";
 }
 
 export interface ClientMessageThread {
@@ -259,6 +260,7 @@ export async function fetchClientMessageThreads(
         id: assignment.talent_id,
         fullName: profileById.get(assignment.talent_id) ?? "Certified developer",
         role: assignment.role,
+        participantRole: "talent" as const,
       })),
     messages: rawMessages
       .filter((message) => message.project_id === project.id)
@@ -268,6 +270,91 @@ export async function fetchClientMessageThreads(
           message.sender_role === "admin"
             ? "Somahorse control room"
             : profileById.get(message.sender_id) ?? (message.sender_role === "client" ? "You" : "Project developer"),
+      })),
+    reads: (readsResult.data ?? []).filter((read) => read.project_id === project.id) as WorkspaceMessageRead[],
+  }));
+}
+
+export async function fetchTalentMessageThreads(
+  admin: SupabaseClient,
+  talentId: string
+): Promise<ClientMessageThread[]> {
+  const { data: ownAssignments } = await admin
+    .from("project_assignments")
+    .select("project_id")
+    .eq("talent_id", talentId)
+    .in("status", ACTIVE_ASSIGNMENT_STATUSES);
+  const projectIds = [...new Set((ownAssignments ?? []).map((assignment) => assignment.project_id as string))];
+  if (!projectIds.length) return [];
+
+  const { data: rawProjects } = await admin
+    .from("projects")
+    .select("id, title, status, client_id, updated_at")
+    .in("id", projectIds)
+    .order("updated_at", { ascending: false });
+  const projects = (rawProjects ?? []) as Array<{
+    id: string;
+    title: string;
+    status: string;
+    client_id: string;
+  }>;
+  if (!projects.length) return [];
+  const ids = projects.map((project) => project.id);
+
+  const [assignmentsResult, messagesResult, readsResult] = await Promise.all([
+    admin
+      .from("project_assignments")
+      .select("project_id, talent_id, role, status, match_score")
+      .in("project_id", ids)
+      .in("status", ACTIVE_ASSIGNMENT_STATUSES),
+    admin
+      .from("project_messages")
+      .select("id, project_id, sender_id, sender_role, body, created_at")
+      .in("project_id", ids)
+      .order("created_at"),
+    admin
+      .from("project_message_reads")
+      .select("project_id, user_id, last_read_at, updated_at")
+      .in("project_id", ids),
+  ]);
+  const assignments = (assignmentsResult.data ?? []) as AssignmentRow[];
+  const rawMessages = (messagesResult.data ?? []) as Array<Omit<WorkspaceMessage, "sender_name">>;
+  const profileIds = [...new Set([
+    ...projects.map((project) => project.client_id),
+    ...assignments.map((assignment) => assignment.talent_id),
+    ...rawMessages.map((message) => message.sender_id),
+  ])];
+  const { data: profiles } = await admin.from("profiles").select("id, full_name").in("id", profileIds);
+  const profileById = new Map((profiles ?? []).map((profile) => [profile.id, profile.full_name as string | null]));
+
+  return projects.map((project) => ({
+    projectId: project.id,
+    projectTitle: project.title,
+    projectStatus: project.status,
+    members: [
+      {
+        id: project.client_id,
+        fullName: profileById.get(project.client_id) ?? "Project client",
+        role: "Project client",
+        participantRole: "client" as const,
+      },
+      ...assignments
+        .filter((assignment) => assignment.project_id === project.id)
+        .map((assignment) => ({
+          id: assignment.talent_id,
+          fullName: profileById.get(assignment.talent_id) ?? "Certified talent",
+          role: assignment.role,
+          participantRole: "talent" as const,
+        })),
+    ],
+    messages: rawMessages
+      .filter((message) => message.project_id === project.id)
+      .map((message) => ({
+        ...message,
+        sender_name:
+          message.sender_role === "admin"
+            ? "Somahorse control room"
+            : profileById.get(message.sender_id) ?? (message.sender_role === "client" ? "Project client" : "Project teammate"),
       })),
     reads: (readsResult.data ?? []).filter((read) => read.project_id === project.id) as WorkspaceMessageRead[],
   }));

@@ -11,7 +11,7 @@ export default async function TalentDashboardLayout({ children }: { children: Re
       .select("id, project_id, type, title, message, payload, read_at, created_at")
       .eq("recipient_user_id", userId)
       .order("created_at", { ascending: false })
-      .limit(6),
+      .limit(30),
     supabase
       .from("project_assignments")
       .select("id", { count: "exact", head: true })
