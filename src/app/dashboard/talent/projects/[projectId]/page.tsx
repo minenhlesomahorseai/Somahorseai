@@ -6,8 +6,8 @@ import { fetchProjectWorkspaceData } from "@/lib/projects/workspace";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
-export default async function TalentProjectWorkspacePage({ params }: { params: Promise<{ projectId: string }> }) {
-  const { projectId } = await params;
+export default async function TalentProjectWorkspacePage({ params, searchParams }: { params: Promise<{ projectId: string }>; searchParams: Promise<{ tab?: string }> }) {
+  const [{ projectId }, query] = await Promise.all([params, searchParams]);
   const { userId } = await loadTalentSession();
   const supabase = await createClient();
   const { data: assignment } = await supabase
@@ -26,5 +26,5 @@ export default async function TalentProjectWorkspacePage({ params }: { params: P
   if (!data.workspace || data.milestones.length === 0) {
     return <ProjectWorkspaceBootstrap projectId={projectId} role="talent" />;
   }
-  return <ProjectWorkspace data={data} role="talent" currentUserId={userId} paymentReady={false} />;
+  return <ProjectWorkspace data={data} role="talent" currentUserId={userId} paymentReady={false} initialTab={query.tab === "messages" ? "messages" : undefined} />;
 }

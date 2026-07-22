@@ -52,10 +52,10 @@ export default async function ClientOverviewPage() {
   const tasksDone = tasks.filter((t) => t.done).length;
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 max-w-full space-y-6 overflow-x-clip">
       {/* Greeting + headline numbers */}
       <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-        <div>
+        <div className="min-w-0">
           <p className="cue text-navy-mid/70">Client dashboard</p>
           <h1 className="mt-1 font-display text-3xl font-bold tracking-tight text-navy sm:text-4xl">
             Welcome{user.firstName ? `, ${user.firstName}` : ""}
@@ -66,7 +66,7 @@ export default async function ClientOverviewPage() {
               : "Here's what your AI team is working on today."}
           </p>
         </div>
-        <div className="flex items-center gap-6 sm:gap-9">
+        <div className="grid min-w-0 grid-cols-3 gap-2 sm:flex sm:items-center sm:gap-9">
           <StatBadge value={String(networkSize)} label="Developers" icon={UsersRound} />
           <StatBadge value={String(live.length)} label="Monitored" icon={Activity} />
           <StatBadge value={String(projects.length)} label="Projects" icon={FolderKanban} />
@@ -74,7 +74,7 @@ export default async function ClientOverviewPage() {
       </div>
 
       {/* Bento grid */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
+      <div className="grid min-w-0 grid-cols-1 gap-5 lg:grid-cols-12">
         {/* Company card */}
         <Tile className="lg:col-span-4 lg:row-span-2 flex flex-col justify-between overflow-hidden bg-gradient-to-br from-navy via-navy-mid to-blue-vivid p-0 text-white">
           <div className="relative flex h-full flex-col justify-between p-6">
@@ -149,7 +149,7 @@ export default async function ClientOverviewPage() {
           <TileHeader title="Monthly recurring" icon={Activity} />
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-display text-4xl font-bold text-navy">
+              <p className="break-words font-display text-3xl font-bold text-navy sm:text-4xl">
                 R{(live.length * 18000).toLocaleString("en-ZA")}
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
@@ -160,9 +160,9 @@ export default async function ClientOverviewPage() {
               <TrendingUp className="size-7" aria-hidden />
             </span>
           </div>
-          <p className="mt-4 flex items-start gap-2 rounded-2xl bg-blue-light/40 p-3 text-xs text-navy-mid">
+          <p className="mt-4 flex min-w-0 items-start gap-2 overflow-hidden rounded-2xl bg-blue-light/40 p-3 text-xs text-navy-mid">
             <Sparkles className="mt-0.5 size-3.5 shrink-0 text-blue-vivid" />
-            Every delivered system becomes a system we monitor — turning builds into recurring revenue.
+            <span className="min-w-0 break-words">Every delivered system becomes a system we monitor — turning builds into recurring revenue.</span>
           </p>
         </Tile>
 

@@ -1,21 +1,76 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
-import { Bell } from "lucide-react";
+import { useEffect, useState } from "react";
 
+import type { DashboardNotification } from "@/lib/dashboard/notifications";
+import { createClient } from "@/lib/supabase/client";
 import type { DashboardUser } from "./dashboard-user";
 import { TopNav } from "./top-nav";
 import { BottomNav } from "./bottom-nav";
+import { ClientNotificationMenu } from "./client-notification-menu";
 
 export function DashboardShell({
   user,
+  userId,
+  initialNotifications,
   children,
 }: {
   user: DashboardUser;
+  userId: string;
+  initialNotifications: DashboardNotification[];
   children: React.ReactNode;
 }) {
+  const [notifications, setNotifications] = useState(initialNotifications);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const unreadMessageCount = notifications.filter(
+    (notification) => notification.type === "project_message" && !notification.read_at
+  ).length;
+
+  useEffect(() => {
+    const client = createClient();
+    const channel = client
+      .channel(`client-notifications:${userId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "notifications", filter: `recipient_user_id=eq.${userId}` },
+        (payload) => {
+          const incoming = payload.new as DashboardNotification;
+          if (!incoming?.id) return;
+          setNotifications((current) => [incoming, ...current.filter((item) => item.id !== incoming.id)].slice(0, 30));
+        }
+      )
+      .subscribe();
+    return () => {
+      void client.removeChannel(channel);
+    };
+  }, [userId]);
+
+  const toggleNotifications = () => {
+    const nextOpen = !notificationsOpen;
+    setNotificationsOpen(nextOpen);
+    if (!nextOpen) return;
+    const unreadIds = notifications.filter((notification) => !notification.read_at).map((notification) => notification.id);
+    if (!unreadIds.length) return;
+    const readAt = new Date().toISOString();
+    setNotifications((current) =>
+      current.map((notification) =>
+        unreadIds.includes(notification.id) ? { ...notification, read_at: readAt } : notification
+      )
+    );
+    void createClient().from("notifications").update({ read_at: readAt }).in("id", unreadIds);
+  };
+
   return (
-    <div className="min-h-screen bg-background hero-field">
-      <TopNav user={user} />
+    <div className="min-h-screen w-full max-w-full overflow-x-clip bg-background hero-field">
+      <TopNav
+        user={user}
+        notifications={notifications}
+        notificationsOpen={notificationsOpen}
+        onToggleNotifications={toggleNotifications}
+        unreadMessageCount={unreadMessageCount}
+      />
 
       {/* Mobile header */}
       <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border/60 bg-background/80 px-4 py-3 backdrop-blur-xl lg:hidden">
@@ -33,14 +88,12 @@ export function DashboardShell({
           </span>
         </Link>
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            aria-label="Notifications"
-            className="relative grid size-9 place-items-center rounded-full border border-border/70 bg-white/80 text-navy-mid"
-          >
-            <Bell className="size-4" aria-hidden />
-            <span className="absolute right-2 top-2 size-1.5 rounded-full bg-accent-amber" />
-          </button>
+          <ClientNotificationMenu
+            mobile
+            notifications={notifications}
+            open={notificationsOpen}
+            onToggle={toggleNotifications}
+          />
           <Link
             href="/dashboard/client/profile"
             aria-label="Profile"
@@ -51,11 +104,11 @@ export function DashboardShell({
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-7xl px-4 pb-28 pt-5 sm:px-6 lg:pb-12 lg:pt-7">
+      <main className="mx-auto min-w-0 w-full max-w-7xl overflow-x-clip px-4 pb-28 pt-5 sm:px-6 lg:pb-12 lg:pt-7">
         {children}
       </main>
 
-      <BottomNav />
+      <BottomNav unreadMessageCount={unreadMessageCount} />
     </div>
   );
 }

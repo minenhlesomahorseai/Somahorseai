@@ -8,7 +8,7 @@ export default async function TalentDashboardLayout({ children }: { children: Re
   const [notificationsResult, invitationsResult] = await Promise.all([
     supabase
       .from("notifications")
-      .select("id, type, title, message, read_at, created_at")
+      .select("id, project_id, type, title, message, payload, read_at, created_at")
       .eq("recipient_user_id", userId)
       .order("created_at", { ascending: false })
       .limit(6),
@@ -22,6 +22,7 @@ export default async function TalentDashboardLayout({ children }: { children: Re
   return (
     <TalentDashboardShell
       user={user}
+      userId={userId}
       notifications={(notificationsResult.data ?? []) as TalentNotification[]}
       inviteCount={invitationsResult.count ?? 0}
     >

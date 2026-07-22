@@ -351,6 +351,15 @@ button:focus-visible {
   -webkit-backdrop-filter: blur(22px) saturate(1.15);
 }
 
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 .talent-card-enter {
   animation: talent-rise 560ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }

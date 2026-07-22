@@ -20,11 +20,13 @@ const EASE = [0.16, 1, 0.3, 1] as const;
 
 export function TalentDashboardShell({
   user,
+  userId,
   notifications,
   inviteCount,
   children,
 }: {
   user: DashboardUser;
+  userId: string;
   notifications: TalentNotification[];
   inviteCount: number;
   children: React.ReactNode;
@@ -33,6 +35,7 @@ export function TalentDashboardShell({
   const router = useRouter();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notificationItems, setNotificationItems] = useState(notifications);
   const [seenNotifications, setSeenNotifications] = useState<string[]>([]);
   const [signingOut, setSigningOut] = useState(false);
 
@@ -41,9 +44,28 @@ export function TalentDashboardShell({
   const centreItems = TALENT_NAV.filter((item) => !item.href.endsWith("/settings"));
   const moreActive = overflow.some((item) => isNavItemActive(pathname, item.href));
   const unreadIds = useMemo(
-    () => notifications.filter((item) => !item.read_at && !seenNotifications.includes(item.id)).map((item) => item.id),
-    [notifications, seenNotifications]
+    () => notificationItems.filter((item) => !item.read_at && !seenNotifications.includes(item.id)).map((item) => item.id),
+    [notificationItems, seenNotifications]
   );
+
+  useEffect(() => {
+    const client = createClient();
+    const channel = client
+      .channel(`talent-notifications:${userId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "notifications", filter: `recipient_user_id=eq.${userId}` },
+        (payload) => {
+          const incoming = payload.new as TalentNotification;
+          if (!incoming?.id) return;
+          setNotificationItems((current) => [incoming, ...current.filter((item) => item.id !== incoming.id)].slice(0, 30));
+        }
+      )
+      .subscribe();
+    return () => {
+      void client.removeChannel(channel);
+    };
+  }, [userId]);
 
   useEffect(() => {
     if (!drawerOpen) return;
@@ -58,9 +80,11 @@ export function TalentDashboardShell({
     setNotificationsOpen((open) => !open);
     if (unreadIds.length === 0) return;
     setSeenNotifications((current) => [...new Set([...current, ...unreadIds])]);
+    const readAt = new Date().toISOString();
+    setNotificationItems((current) => current.map((item) => unreadIds.includes(item.id) ? { ...item, read_at: readAt } : item));
     await createClient()
       .from("notifications")
-      .update({ read_at: new Date().toISOString() })
+      .update({ read_at: readAt })
       .in("id", unreadIds);
   };
 
@@ -135,7 +159,7 @@ export function TalentDashboardShell({
               unreadCount={unreadIds.length}
               onClick={openNotifications}
             >
-              <NotificationPanel notifications={notifications} seen={seenNotifications} />
+              <NotificationPanel notifications={notificationItems} seen={seenNotifications} onSelect={() => setNotificationsOpen(false)} />
             </NotificationButton>
             <Link
               href="/dashboard/talent/profile"
@@ -169,7 +193,7 @@ export function TalentDashboardShell({
             unreadCount={unreadIds.length}
             onClick={openNotifications}
           >
-            <NotificationPanel mobile notifications={notifications} seen={seenNotifications} />
+            <NotificationPanel mobile notifications={notificationItems} seen={seenNotifications} onSelect={() => setNotificationsOpen(false)} />
           </NotificationButton>
           <Link
             href="/dashboard/talent/profile"
@@ -371,10 +395,12 @@ function NotificationButton({
 function NotificationPanel({
   notifications,
   seen,
+  onSelect,
   mobile = false,
 }: {
   notifications: TalentNotification[];
   seen: string[];
+  onSelect: () => void;
   mobile?: boolean;
 }) {
   return (
@@ -401,12 +427,12 @@ function NotificationPanel({
           {notifications.map((item) => {
             const unread = !item.read_at && !seen.includes(item.id);
             return (
-              <div key={item.id} className="relative rounded-2xl bg-white/65 px-3 py-3">
+              <Link href={item.project_id ? `/dashboard/talent/projects/${item.project_id}?tab=messages` : "/dashboard/talent"} onClick={onSelect} key={item.id} className="relative block rounded-2xl bg-white/65 px-3 py-3 transition hover:bg-white">
                 {unread ? <span className="absolute right-3 top-3 size-2 rounded-full bg-blue-vivid" /> : null}
                 <p className="pr-4 text-xs font-bold text-navy">{item.title}</p>
                 <p className="mt-1 text-[11px] leading-5 text-muted-foreground">{item.message}</p>
                 <p className="mt-1.5 text-[10px] font-medium text-blue-vivid">{formatRelativeDate(item.created_at)}</p>
-              </div>
+              </Link>
             );
           })}
         </div>

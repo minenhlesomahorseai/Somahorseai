@@ -1,19 +1,20 @@
-import { MessagesSquare } from "lucide-react";
+import { ClientMessages } from "@/components/dashboard/client-messages";
+import { fetchClientMessageThreads } from "@/lib/dashboard/client-workspace-data";
+import { loadClientSession } from "@/lib/dashboard/session";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 
-import { ComingSoon } from "@/components/dashboard/coming-soon";
+export default async function MessagesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ project?: string }>;
+}) {
+  const [{ userId }, query] = await Promise.all([loadClientSession(), searchParams]);
+  const supabase = await createClient();
+  const threads = await fetchClientMessageThreads(createAdminClient() ?? supabase, userId);
+  const selectedProjectId = threads.some((thread) => thread.projectId === query.project)
+    ? query.project
+    : threads[0]?.projectId;
 
-export default function MessagesPage() {
-  return (
-    <ComingSoon
-      title="Messages"
-      description="Your single thread with the Project Management agent — and a human when one is needed."
-      icon={MessagesSquare}
-      points={[
-        "Proactive updates from your Project Management agent",
-        "Ask anything about scope, timeline, or delivery",
-        "Scope-change requests handled and re-quoted automatically",
-        "Escalation to a human for genuine exceptions",
-      ]}
-    />
-  );
+  return <ClientMessages initialThreads={threads} currentUserId={userId} initialProjectId={selectedProjectId ?? null} />;
 }

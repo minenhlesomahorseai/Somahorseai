@@ -11,7 +11,7 @@ export function Tile({
 }) {
   return (
     <div
-      className={`rounded-3xl border border-border/70 bg-white/80 p-5 shadow-card backdrop-blur-sm ${className}`}
+      className={`min-w-0 max-w-full rounded-3xl border border-border/70 bg-white/80 p-5 shadow-card backdrop-blur-sm ${className}`}
     >
       {children}
     </div>
@@ -60,13 +60,13 @@ export function StatBadge({
   icon: LucideIcon;
 }) {
   return (
-    <div className="flex items-center gap-3">
-      <span className="grid size-10 place-items-center rounded-xl bg-blue-light/70 text-navy-mid">
-        <Icon className="size-5" aria-hidden />
+    <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+      <span className="grid size-8 shrink-0 place-items-center rounded-xl bg-blue-light/70 text-navy-mid sm:size-10">
+        <Icon className="size-4 sm:size-5" aria-hidden />
       </span>
-      <div className="leading-tight">
-        <p className="font-display text-2xl font-bold text-navy sm:text-3xl">{value}</p>
-        <p className="text-xs font-medium text-muted-foreground">{label}</p>
+      <div className="min-w-0 leading-tight">
+        <p className="truncate font-display text-xl font-bold text-navy sm:text-3xl">{value}</p>
+        <p className="truncate text-[10px] font-medium text-muted-foreground sm:text-xs">{label}</p>
       </div>
     </div>
   );

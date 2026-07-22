@@ -76,6 +76,13 @@ export interface WorkspaceMessage {
   created_at: string;
 }
 
+export interface WorkspaceMessageRead {
+  project_id: string;
+  user_id: string;
+  last_read_at: string;
+  updated_at: string;
+}
+
 export interface WorkspacePayment {
   id: string;
   project_id: string;
@@ -113,6 +120,7 @@ export interface ProjectWorkspaceData {
   milestones: WorkspaceMilestone[];
   members: WorkspaceMember[];
   messages: WorkspaceMessage[];
+  messageReads: WorkspaceMessageRead[];
   payments: WorkspacePayment[];
   earnings: WorkspaceEarning[];
   clientName: string;
@@ -132,13 +140,14 @@ export async function fetchProjectWorkspaceData(
   if (!rawProject) return null;
   const project = rawProject as WorkspaceProject;
 
-  const [workspaceResult, milestonesResult, tasksResult, assignmentsResult, messagesResult, paymentsResult, earningsResult] =
+  const [workspaceResult, milestonesResult, tasksResult, assignmentsResult, messagesResult, messageReadsResult, paymentsResult, earningsResult] =
     await Promise.all([
       admin.from("project_workspaces").select("project_id, status, generated_by, progress_percent, expected_completion_at, generated_at, completed_at").eq("project_id", projectId).maybeSingle(),
       admin.from("project_milestones").select("id, project_id, title, description, sequence, duration_days, status, payment_amount, payment_status, completed_at").eq("project_id", projectId).order("sequence"),
       admin.from("project_tasks").select("id, project_id, milestone_id, title, description, sequence, assigned_talent_id, status, completed_by, completed_at").eq("project_id", projectId).order("sequence"),
       admin.from("project_assignments").select("talent_id, role, status").eq("project_id", projectId).in("status", ["assigned", "active", "completed"]),
       admin.from("project_messages").select("id, project_id, sender_id, sender_role, body, created_at").eq("project_id", projectId).order("created_at").limit(250),
+      admin.from("project_message_reads").select("project_id, user_id, last_read_at, updated_at").eq("project_id", projectId),
       admin.from("payments").select("id, project_id, kind, amount, currency, status, invoice_number, workspace_milestone_id, period_key, description, paid_at, created_at").eq("project_id", projectId).order("created_at", { ascending: false }),
       admin.from("talent_earnings").select("id, project_id, payment_id, talent_id, client_payment_amount, talent_pool_amount, amount_owed, share_percent, status, paid_at, payout_reference, created_at").eq("project_id", projectId).order("created_at", { ascending: false }),
     ]);
@@ -181,6 +190,7 @@ export async function fetchProjectWorkspaceData(
           ? "Somahorse control room"
           : profileById.get(message.sender_id) ?? (message.sender_role === "client" ? "Client" : "Talent member"),
     })),
+    messageReads: (messageReadsResult.data ?? []) as WorkspaceMessageRead[],
     payments: (paymentsResult.data ?? []) as WorkspacePayment[],
     earnings: rawEarnings.map((earning) => ({
       ...earning,

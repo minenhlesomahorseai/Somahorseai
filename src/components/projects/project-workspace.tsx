@@ -9,7 +9,9 @@ import {
   Banknote,
   CalendarClock,
   Check,
+  CheckCheck,
   CheckCircle2,
+  ChevronRight,
   Circle,
   CircleDollarSign,
   Clock3,
@@ -38,6 +40,7 @@ import {
 import type {
   ProjectWorkspaceData,
   WorkspaceMessage,
+  WorkspaceMessageRead,
   WorkspaceMilestone,
   WorkspaceRole,
 } from "@/lib/projects/workspace";
@@ -88,17 +91,20 @@ export function ProjectWorkspace({
   currentUserId,
   paymentReady,
   paymentConfirmed = false,
+  initialTab,
 }: {
   data: ProjectWorkspaceData;
   role: WorkspaceRole;
   currentUserId: string;
   paymentReady: boolean;
   paymentConfirmed?: boolean;
+  initialTab?: WorkspaceTab;
 }) {
-  const [activeTab, setActiveTab] = useState<WorkspaceTab>(paymentConfirmed ? "finance" : "overview");
+  const [activeTab, setActiveTab] = useState<WorkspaceTab>(paymentConfirmed ? "finance" : initialTab ?? "overview");
   const [milestones, setMilestones] = useState(data.milestones);
   const [progress, setProgress] = useState(data.workspace?.progress_percent ?? 0);
   const [messages, setMessages] = useState(data.messages);
+  const [messageReads, setMessageReads] = useState(data.messageReads);
   const [messageText, setMessageText] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
   const [completing, startTaskTransition] = useTransition();
@@ -116,6 +122,12 @@ export function ProjectWorkspace({
   const buildPaid = data.payments.filter((payment) => payment.status === "paid" && payment.kind !== "monthly").reduce((sum, item) => sum + Number(item.amount), 0);
   const outstandingBuild = Math.max(0, Number(data.project.build_fee_amount ?? 0) - buildPaid);
   const ownEarnings = data.earnings.filter((earning) => earning.talent_id === currentUserId);
+  const ownLastReadAt = messageReads.find((read) => read.user_id === currentUserId)?.last_read_at;
+  const unreadMessages = messages.filter(
+    (message) =>
+      message.sender_id !== currentUserId &&
+      (!ownLastReadAt || new Date(message.created_at).getTime() > new Date(ownLastReadAt).getTime())
+  ).length;
 
   useEffect(() => {
     const client = createClient();
@@ -140,6 +152,18 @@ export function ProjectWorkspace({
                   },
                 ]
           );
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "project_message_reads", filter: `project_id=eq.${data.project.id}` },
+        (payload) => {
+          const incoming = payload.new as WorkspaceMessageRead;
+          if (!incoming?.user_id) return;
+          setMessageReads((current) => [
+            ...current.filter((read) => read.user_id !== incoming.user_id),
+            incoming,
+          ]);
         }
       )
       .on(
@@ -182,6 +206,34 @@ export function ProjectWorkspace({
   useEffect(() => {
     if (activeTab === "messages") messageEndRef.current?.scrollIntoView({ block: "end" });
   }, [activeTab, messages]);
+
+  useEffect(() => {
+    if (activeTab !== "messages" || messages.length === 0) return;
+    const latestMessageAt = messages.at(-1)?.created_at;
+    if (!latestMessageAt || (ownLastReadAt && new Date(ownLastReadAt) >= new Date(latestMessageAt))) return;
+
+    const readAt = new Date().toISOString();
+    const client = createClient();
+    void client
+      .from("project_message_reads")
+      .upsert(
+        { project_id: data.project.id, user_id: currentUserId, last_read_at: readAt },
+        { onConflict: "project_id,user_id" }
+      )
+      .then(({ error }) => {
+        if (error) return;
+        setMessageReads((current) => [
+          ...current.filter((read) => read.user_id !== currentUserId),
+          { project_id: data.project.id, user_id: currentUserId, last_read_at: readAt, updated_at: readAt },
+        ]);
+      });
+    void client
+      .from("notifications")
+      .update({ read_at: readAt })
+      .eq("project_id", data.project.id)
+      .eq("type", "project_message")
+      .is("read_at", null);
+  }, [activeTab, currentUserId, data.project.id, messages, ownLastReadAt]);
 
   const handleCompleteTask = (taskId: string) => {
     setActionError(null);
@@ -282,19 +334,22 @@ export function ProjectWorkspace({
         </div>
       </section>
 
-      <nav className="workspace-glass sticky top-[4.1rem] z-30 overflow-x-auto rounded-2xl p-1.5 lg:top-[5.8rem]" aria-label="Project workspace">
-        <div className="flex min-w-max gap-1 sm:min-w-0">
+      <nav className="sticky top-[4.1rem] z-30 overflow-hidden rounded-2xl border border-border/70 bg-white p-1.5 shadow-nav lg:top-[5.8rem]" aria-label="Project workspace">
+        <div className="no-scrollbar grid snap-x snap-mandatory grid-flow-col auto-cols-[calc((100%_-_0.25rem)_/_2)] gap-1 overflow-x-auto scroll-smooth sm:auto-cols-fr sm:grid-flow-row sm:grid-cols-4 sm:overflow-visible">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const active = activeTab === tab.id;
             return (
-              <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)} className={`flex min-w-[7.5rem] flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition ${active ? "bg-navy text-white shadow-glow" : "text-muted-foreground hover:bg-white/60 hover:text-navy"}`}>
+              <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)} className={`flex min-w-0 snap-start items-center justify-center gap-1.5 rounded-xl px-2 py-2.5 text-xs font-bold transition sm:px-4 ${active ? "bg-navy text-white shadow-glow" : "text-muted-foreground hover:bg-blue-mist hover:text-navy"}`}>
                 <Icon className="size-4" aria-hidden /> {tab.label}
-                {tab.id === "messages" && messages.length ? <span className={`rounded-full px-1.5 text-[9px] ${active ? "bg-white/15" : "bg-blue-vivid/10 text-blue-vivid"}`}>{messages.length}</span> : null}
+                {tab.id === "messages" && unreadMessages ? <span className={`rounded-full px-1.5 text-[9px] ${active ? "bg-white/15" : "bg-blue-vivid/10 text-blue-vivid"}`}>{unreadMessages > 9 ? "9+" : unreadMessages}</span> : null}
               </button>
             );
           })}
         </div>
+        <span className="pointer-events-none absolute right-1.5 top-1/2 grid size-6 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-navy-mid shadow-soft sm:hidden" aria-hidden>
+          <ChevronRight className="size-3.5" />
+        </span>
       </nav>
 
       {actionError ? <div className="rounded-2xl border border-accent-amber/25 bg-accent-amber/10 p-3 text-sm text-accent-amber" role="alert">{actionError}</div> : null}
@@ -315,7 +370,7 @@ export function ProjectWorkspace({
         <MilestonesTab milestones={milestones} role={role} completing={completing} onComplete={handleCompleteTask} members={data.members} />
       ) : null}
       {activeTab === "messages" ? (
-        <MessagesTab messages={messages} currentUserId={currentUserId} value={messageText} sending={sending} onChange={setMessageText} onSubmit={handleSendMessage} endRef={messageEndRef} />
+        <MessagesTab messages={messages} messageReads={messageReads} currentUserId={currentUserId} value={messageText} sending={sending} onChange={setMessageText} onSubmit={handleSendMessage} endRef={messageEndRef} />
       ) : null}
       {activeTab === "finance" ? (
         <FinanceTab
@@ -440,7 +495,7 @@ function MilestonesTab({ milestones, role, completing, onComplete, members }: { 
   );
 }
 
-function MessagesTab({ messages, currentUserId, value, sending, onChange, onSubmit, endRef }: { messages: WorkspaceMessage[]; currentUserId: string; value: string; sending: boolean; onChange: (value: string) => void; onSubmit: (event: FormEvent<HTMLFormElement>) => void; endRef: React.RefObject<HTMLDivElement | null> }) {
+function MessagesTab({ messages, messageReads, currentUserId, value, sending, onChange, onSubmit, endRef }: { messages: WorkspaceMessage[]; messageReads: WorkspaceMessageRead[]; currentUserId: string; value: string; sending: boolean; onChange: (value: string) => void; onSubmit: (event: FormEvent<HTMLFormElement>) => void; endRef: React.RefObject<HTMLDivElement | null> }) {
   return (
     <section className="workspace-chat overflow-hidden rounded-[2rem] border border-white/70 shadow-card">
       <div className="flex items-center justify-between border-b border-white/70 bg-white/62 px-4 py-3.5 sm:px-5"><div className="flex items-center gap-3"><span className="relative grid size-10 place-items-center rounded-full bg-gradient-to-br from-navy to-blue-vivid text-white"><UsersRound className="size-5" aria-hidden /><span className="absolute bottom-0 right-0 size-2.5 rounded-full border-2 border-white bg-accent-teal" /></span><div><p className="text-sm font-bold text-navy">Project group</p><p className="text-[11px] text-accent-teal">Client · Talent · Control room</p></div></div><span className="hidden items-center gap-1.5 rounded-full bg-accent-teal/8 px-3 py-1.5 text-[10px] font-bold text-accent-teal sm:inline-flex"><LockKeyhole className="size-3" aria-hidden /> Secured workspace</span></div>
@@ -453,7 +508,10 @@ function MessagesTab({ messages, currentUserId, value, sending, onChange, onSubm
               <div className={`max-w-[88%] rounded-2xl px-4 py-3 shadow-soft sm:max-w-[72%] ${own ? "rounded-br-md bg-navy text-white" : admin ? "rounded-bl-md border border-accent-teal/15 bg-accent-teal/8 text-navy" : "rounded-bl-md border border-white bg-white/88 text-navy"}`}>
                 {!own ? <p className={`mb-1 text-[10px] font-bold ${admin ? "text-accent-teal" : "text-blue-vivid"}`}>{message.sender_name}</p> : null}
                 <p className="whitespace-pre-wrap text-sm leading-6">{message.body}</p>
-                <p className={`mt-1 text-right text-[9px] ${own ? "text-white/45" : "text-muted-foreground"}`}>{formatMessageTime(message.created_at)} {own ? "✓" : ""}</p>
+                <p className={`mt-1 flex items-center justify-end gap-1 text-right text-[9px] ${own ? "text-white/55" : "text-muted-foreground"}`}>
+                  {formatMessageTime(message.created_at)}
+                  {own ? <MessageReadStatus message={message} reads={messageReads} /> : null}
+                </p>
               </div>
             </div>
           );
@@ -492,6 +550,20 @@ function SectionTitle({ icon: Icon, title }: { icon: typeof Sparkles; title: str
 function OverviewMetric({ icon: Icon, value, label, tone = "blue" }: { icon: typeof CheckCircle2; value: string; label: string; tone?: "blue" | "teal" }) { return <div className="rounded-2xl bg-white/48 p-4"><span className={`grid size-9 place-items-center rounded-xl ${tone === "teal" ? "bg-accent-teal/10 text-accent-teal" : "bg-blue-vivid/10 text-blue-vivid"}`}><Icon className="size-4" aria-hidden /></span><p className="mt-3 font-display text-2xl font-bold text-navy">{value}</p><p className="mt-1 text-[10px] font-bold uppercase tracking-[0.08em] text-muted-foreground">{label}</p></div>; }
 function FinanceMetric({ label, value, icon: Icon, dark = false }: { label: string; value: string; icon: typeof CircleDollarSign; dark?: boolean }) { return <div className={`rounded-3xl p-5 ${dark ? "talent-glass-dark text-white" : "workspace-glass text-navy"}`}><div className="flex items-center justify-between"><p className={`text-xs font-semibold ${dark ? "text-white/55" : "text-muted-foreground"}`}>{label}</p><Icon className={`size-5 ${dark ? "text-accent-teal" : "text-blue-vivid"}`} aria-hidden /></div><p className="mt-3 font-display text-2xl font-bold">{value}</p></div>; }
 function EmptyFinance({ text }: { text: string }) { return <div className="rounded-2xl border border-dashed border-border bg-white/30 px-5 py-9 text-center"><Banknote className="mx-auto size-6 text-blue-vivid/30" aria-hidden /><p className="mt-3 text-sm text-muted-foreground">{text}</p></div>; }
+function MessageReadStatus({ message, reads }: { message: WorkspaceMessage; reads: WorkspaceMessageRead[] }) {
+  const readCount = reads.filter(
+    (read) => read.user_id !== message.sender_id && new Date(read.last_read_at) >= new Date(message.created_at)
+  ).length;
+  return readCount > 0 ? (
+    <span className="inline-flex items-center gap-0.5 text-blue-sky" title={`Read by ${readCount} project participant${readCount === 1 ? "" : "s"}`}>
+      <CheckCheck className="size-3" aria-hidden /> Read
+    </span>
+  ) : (
+    <span className="inline-flex items-center gap-0.5" title="Delivered">
+      <Check className="size-3" aria-hidden /> Delivered
+    </span>
+  );
+}
 function WorkspaceStatus({ value }: { value: string }) { return <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-teal/12 px-3 py-1 text-[10px] font-bold capitalize text-accent-teal"><span className="talent-live-dot size-1.5 rounded-full bg-accent-teal" />{value.replaceAll("_", " ")}</span>; }
 function MilestoneStatus({ value }: { value: string }) { return <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold capitalize ${value === "completed" ? "bg-accent-teal/10 text-accent-teal" : value === "in_progress" ? "bg-blue-vivid/10 text-blue-vivid" : "bg-blue-light text-navy-mid"}`}>{value.replaceAll("_", " ")}</span>; }
 function PaymentStatus({ value }: { value: string }) { return <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold capitalize ${value === "paid" ? "bg-accent-teal/10 text-accent-teal" : value === "failed" ? "bg-danger/10 text-danger" : "bg-accent-amber/10 text-accent-amber"}`}>{value}</span>; }

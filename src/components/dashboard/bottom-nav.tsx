@@ -16,7 +16,7 @@ import { createClient } from "@/lib/supabase/client";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
-export function BottomNav() {
+export function BottomNav({ unreadMessageCount = 0 }: { unreadMessageCount?: number }) {
   const pathname = usePathname();
   const router = useRouter();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -52,9 +52,9 @@ export function BottomNav() {
       <Link
         href={NEW_PROJECT_HREF}
         aria-label="New project"
-        className="fixed bottom-[88px] right-4 z-40 flex size-14 items-center justify-center rounded-2xl bg-navy-mid text-white shadow-glow transition active:scale-95 lg:hidden"
+        className="fixed bottom-[84px] right-3 z-40 flex size-12 items-center justify-center rounded-full border border-white/20 bg-navy-mid text-white shadow-glow transition active:scale-95 sm:right-4 sm:size-14 lg:hidden"
       >
-        <Plus className="size-6" aria-hidden />
+        <Plus className="size-5 sm:size-6" aria-hidden />
       </Link>
 
       <nav
@@ -150,6 +150,7 @@ export function BottomNav() {
                 {overflow.map((item) => {
                   const active = isNavItemActive(pathname, item.href);
                   const Icon = item.icon;
+                  const messageBadge = item.href.endsWith("/messages") && unreadMessageCount > 0;
                   return (
                     <Link
                       key={item.href}
@@ -161,8 +162,9 @@ export function BottomNav() {
                           : "border-border bg-white hover:bg-blue-mist"
                       }`}
                     >
-                      <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-blue-light/70 text-navy-mid">
+                      <span className="relative grid size-10 shrink-0 place-items-center rounded-xl bg-blue-light/70 text-navy-mid">
                         <Icon className="size-5" aria-hidden />
+                        {messageBadge ? <span className="absolute -right-1 -top-1 size-2.5 rounded-full bg-accent-amber ring-2 ring-white" /> : null}
                       </span>
                       <span className="min-w-0">
                         <span className="block text-sm font-bold text-navy font-ui">{item.label}</span>
