@@ -1,4 +1,5 @@
-import { BriefcaseBusiness, CalendarClock, CheckCircle2, FolderKanban, Layers3 } from "lucide-react";
+import Link from "next/link";
+import { ArrowUpRight, BriefcaseBusiness, CalendarClock, CheckCircle2, FolderKanban, Layers3 } from "lucide-react";
 
 import { TalentEmptyState, TalentGlassCard, TalentPageHeader } from "@/components/dashboard/talent-ui";
 import { fetchTalentProjects, loadTalentSession, type TalentProject } from "@/lib/dashboard/talent";
@@ -74,6 +75,9 @@ function ProjectGroup({ title, projects, active = false }: { title: string; proj
                   <CalendarClock className="size-3.5" aria-hidden /> {project.timeline_weeks} weeks
                 </span>
               ) : null}
+              <Link href={`/dashboard/talent/projects/${project.project_id}`} className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-navy px-3.5 py-1.5 text-xs font-bold text-white shadow-soft">
+                Open workspace <ArrowUpRight className="size-3.5" aria-hidden />
+              </Link>
             </div>
           </TalentGlassCard>
         ))}

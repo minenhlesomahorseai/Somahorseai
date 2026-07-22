@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Bot, CalendarClock, CheckCircle2, CreditCard, FileText, Plus, UsersRound, Wallet } from "lucide-react";
+import { ArrowUpRight, Bot, CalendarClock, CheckCircle2, CreditCard, FileText, Plus, UsersRound, Wallet } from "lucide-react";
 
 import { StatusPill } from "@/components/dashboard/ui";
 import { fetchClientProjects } from "@/lib/dashboard/data";
@@ -106,6 +106,14 @@ export default async function ProjectsPage({
                 ) : null}
               </div>
               <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border/60 pt-4">
+                {["in_build", "monitoring", "delivered"].includes(project.status) ? (
+                  <Link
+                    href={`/dashboard/client/projects/${project.id}`}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-navy px-4 py-2 text-xs font-semibold text-white shadow-glow transition hover:bg-navy-mid"
+                  >
+                    Open workspace <ArrowUpRight className="size-3.5" aria-hidden />
+                  </Link>
+                ) : null}
                 {project.payment_status === "pending" && project.paddle_transaction_id ? (
                   <Link
                     href={`/dashboard/client/checkout/${project.id}`}

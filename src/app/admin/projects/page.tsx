@@ -36,22 +36,25 @@ export default async function AdminProjectsPage() {
   if (!user) redirect("/login?next=/admin/projects");
   if (!(await isAdminUser(supabase, user))) redirect("/");
 
-  const { data } = await supabase
-    .from("projects")
-    .select(
-      "id, client_id, title, summary, status, payment_status, deposit_amount, monthly_fee_amount, matched_team, started_at, created_at"
-    )
-    .order("created_at", { ascending: false });
-  const projects = (data ?? []) as AdminProject[];
-  const paid = projects.filter((project) => project.payment_status === "paid");
+  const [projectsResult, paymentsResult, earningsResult] = await Promise.all([
+    supabase
+      .from("projects")
+      .select("id, client_id, title, summary, status, payment_status, deposit_amount, monthly_fee_amount, matched_team, started_at, created_at")
+      .order("created_at", { ascending: false }),
+    supabase.from("payments").select("project_id, amount, status").eq("status", "paid"),
+    supabase.from("talent_earnings").select("project_id, amount_owed, status"),
+  ]);
+  const projects = (projectsResult.data ?? []) as AdminProject[];
+  const verifiedPayments = (paymentsResult.data ?? []) as Array<{ project_id: string; amount: number; status: string }>;
+  const earnings = (earningsResult.data ?? []) as Array<{ project_id: string; amount_owed: number; status: string }>;
   const pending = projects.filter((project) => project.payment_status === "pending");
   const needsStaffing = projects.filter(
     (project) => project.status === "matching" && project.payment_status === "paid"
   );
-  const deposits = paid.reduce(
-    (total, project) => total + Number(project.deposit_amount ?? 0),
-    0
-  );
+  const totalReceived = verifiedPayments.reduce((total, payment) => total + Number(payment.amount), 0);
+  const talentOwed = earnings.filter((earning) => earning.status === "owed").reduce((total, earning) => total + Number(earning.amount_owed), 0);
+  const paidByProject = new Map<string, number>();
+  verifiedPayments.forEach((payment) => paidByProject.set(payment.project_id, (paidByProject.get(payment.project_id) ?? 0) + Number(payment.amount)));
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-background hero-field dotted-grid text-navy">
@@ -84,9 +87,10 @@ export default async function AdminProjectsPage() {
           Every scoped project, transaction state, team, and staffing exception.
         </p>
 
-        <div className="mt-7 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="mt-7 grid grid-cols-2 gap-3 lg:grid-cols-5">
           <AdminStat label="Projects" value={String(projects.length)} icon={FolderKanban} />
-          <AdminStat label="Paid deposits" value={formatZar(deposits)} icon={CircleDollarSign} />
+          <AdminStat label="Total received" value={formatZar(totalReceived)} icon={CircleDollarSign} />
+          <AdminStat label="Talent owed" value={formatZar(talentOwed)} icon={UsersRound} alert={talentOwed > 0} />
           <AdminStat label="Awaiting payment" value={String(pending.length)} icon={Clock3} />
           <AdminStat
             label="Staffing exceptions"
@@ -117,10 +121,10 @@ export default async function AdminProjectsPage() {
                 <div className="flex shrink-0 items-center gap-4">
                   <div className="text-right">
                     <p className="text-sm font-bold">
-                      {formatZar(Number(project.deposit_amount ?? 0))}
+                      {formatZar(paidByProject.get(project.id) ?? 0)}
                     </p>
                     <p className="text-[11px] text-muted-foreground">
-                      {project.matched_team?.length ?? 0} nominated
+                      total received · {project.matched_team?.length ?? 0} talent
                     </p>
                   </div>
                   <ArrowUpRight className="size-4 text-navy-mid" />
@@ -180,4 +184,3 @@ function Status({ value, payment = false }: { value: string; payment?: boolean }
     </span>
   );
 }
-

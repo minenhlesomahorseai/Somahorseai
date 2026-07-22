@@ -6,6 +6,7 @@ import {
   sendProjectStartedClient,
 } from "@/lib/email";
 import { formatZar } from "@/lib/projects/pricing";
+import { ensureProjectWorkspace } from "@/lib/ai/workspace";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 interface ActivationRow {
@@ -85,10 +86,73 @@ export async function activateCompletedTransaction({
   }
 
   const activation = data[0] as ActivationRow;
+  const { data: payment } = await admin
+    .from("payments")
+    .select("id")
+    .eq("provider_transaction_id", transaction.id)
+    .maybeSingle();
+  if (payment?.id) {
+    const { error: earningsError } = await admin.rpc("allocate_talent_earnings_for_payment", {
+      p_payment_id: payment.id,
+    });
+    if (earningsError) console.error("Could not allocate deposit earnings", earningsError);
+  }
   if (activation.processed_new) {
+    try {
+      await ensureProjectWorkspace(admin, activation.activated_project_id);
+    } catch (error) {
+      console.error("Project activated but workspace provisioning needs a retry", error);
+    }
     await sendActivationEmails(admin, activation.activated_project_id, activation.project_status);
   }
   return activation;
+}
+
+export async function reconcileCompletedTransaction(args: {
+  transaction: CompletedTransactionLike;
+  eventId: string;
+  eventType: string;
+  occurredAt: string;
+}): Promise<{ kind: "deposit" | "workspace"; projectId: string; paymentId?: string }> {
+  const customData =
+    args.transaction.customData && typeof args.transaction.customData === "object"
+      ? (args.transaction.customData as Record<string, unknown>)
+      : {};
+  const paymentKind = customData.payment_kind;
+  if (!paymentKind || paymentKind === "deposit") {
+    const activation = await activateCompletedTransaction(args);
+    return { kind: "deposit", projectId: activation.activated_project_id };
+  }
+  if (!["build_stage", "delivery", "monthly"].includes(String(paymentKind))) {
+    throw new Error("Unsupported Somahorse payment kind");
+  }
+  if (args.transaction.status !== "completed") throw new Error("Transaction is not completed");
+
+  const admin = createAdminClient();
+  if (!admin) throw new Error("SUPABASE_SERVICE_ROLE_KEY is required for payment reconciliation");
+  const { data: payment } = await admin
+    .from("payments")
+    .select("id, project_id, provider_transaction_id")
+    .eq("provider_transaction_id", args.transaction.id)
+    .maybeSingle();
+  if (!payment) throw new Error("No workspace payment is linked to this Paddle transaction");
+  if (customData.payment_id && customData.payment_id !== payment.id) throw new Error("Paddle payment reference does not match");
+  if (customData.project_id && customData.project_id !== payment.project_id) throw new Error("Paddle project reference does not match");
+
+  const { data, error } = await admin.rpc("record_workspace_payment", {
+    p_transaction_id: args.transaction.id,
+    p_event_id: args.eventId,
+    p_event_type: args.eventType,
+    p_paid_at: args.occurredAt,
+    p_invoice_number: args.transaction.invoiceNumber,
+    p_payload: {
+      transaction_id: args.transaction.id,
+      status: args.transaction.status,
+      payment_kind: paymentKind,
+    },
+  });
+  if (error || !data?.[0]) throw new Error(error?.message ?? "Workspace payment could not be recorded");
+  return { kind: "workspace", projectId: payment.project_id, paymentId: payment.id };
 }
 
 async function sendActivationEmails(

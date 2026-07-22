@@ -2,7 +2,7 @@ import { EventName } from "@paddle/paddle-node-sdk";
 import { NextResponse } from "next/server";
 
 import { unmarshalPaddleWebhook } from "@/lib/payments/paddle";
-import { activateCompletedTransaction } from "@/lib/projects/activation";
+import { reconcileCompletedTransaction } from "@/lib/projects/activation";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
@@ -17,7 +17,7 @@ export async function POST(request: Request) {
   try {
     const event = await unmarshalPaddleWebhook(rawBody, signature);
     if (event.eventType === EventName.TransactionCompleted) {
-      await activateCompletedTransaction({
+      await reconcileCompletedTransaction({
         transaction: event.data,
         eventId: event.eventId,
         eventType: event.eventType,
@@ -31,6 +31,11 @@ export async function POST(request: Request) {
       if (transaction.id) {
         const admin = createAdminClient();
         if (admin) {
+          const { data: failedPayment } = await admin
+            .from("payments")
+            .select("workspace_milestone_id")
+            .eq("provider_transaction_id", transaction.id)
+            .maybeSingle();
           await Promise.all([
             admin
               .from("projects")
@@ -42,6 +47,15 @@ export async function POST(request: Request) {
               .update({ status: "failed" })
               .eq("provider_transaction_id", transaction.id)
               .eq("status", "pending"),
+            ...(failedPayment?.workspace_milestone_id
+              ? [
+                  admin
+                    .from("project_milestones")
+                    .update({ payment_status: "due" })
+                    .eq("id", failedPayment.workspace_milestone_id)
+                    .eq("payment_status", "pending"),
+                ]
+              : []),
           ]);
         }
       }
@@ -52,4 +66,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid webhook" }, { status: 400 });
   }
 }
-

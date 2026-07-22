@@ -308,7 +308,9 @@ export default async function TalentDashboardPage() {
                 <div key={project.project_id} className="rounded-2xl border border-white/75 bg-white/55 p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="truncate font-display text-base font-bold text-navy">{project.title}</p>
+                      <Link href={`/dashboard/talent/projects/${project.project_id}`} className="inline-flex max-w-full items-center gap-1.5 font-display text-base font-bold text-navy transition hover:text-blue-vivid">
+                        <span className="truncate">{project.title}</span><ArrowUpRight className="size-3.5 shrink-0" aria-hidden />
+                      </Link>
                       <p className="mt-0.5 text-xs font-semibold text-blue-vivid">{project.assignment_role}</p>
                     </div>
                     <span className="rounded-full bg-accent-teal/10 px-2.5 py-1 text-[10px] font-bold capitalize text-accent-teal">

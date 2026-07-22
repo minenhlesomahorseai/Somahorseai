@@ -8,6 +8,7 @@ import {
   CircleAlert,
   Download,
   Mail,
+  LayoutDashboard,
   UserRound,
   UsersRound,
 } from "lucide-react";
@@ -170,14 +171,18 @@ export default async function AdminProjectDetailPage({
               {project.summary ?? proposal?.summary}
             </p>
           </div>
-          {project.payment_status === "paid" && project.paddle_transaction_id ? (
-            <Link
-              href={`/api/paddle/invoice?projectId=${project.id}`}
-              className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-full bg-navy px-5 text-sm font-bold text-white shadow-soft transition hover:bg-navy-mid"
-            >
-              <Download className="size-4" /> Invoice
-            </Link>
-          ) : null}
+          <div className="flex flex-wrap gap-2">
+            {project.payment_status === "paid" ? (
+              <Link href={`/admin/projects/${project.id}/workspace`} className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-full bg-navy px-5 text-sm font-bold text-white shadow-soft transition hover:bg-navy-mid">
+                <LayoutDashboard className="size-4" /> Open workspace
+              </Link>
+            ) : null}
+            {project.payment_status === "paid" && project.paddle_transaction_id ? (
+              <Link href={`/api/paddle/invoice?projectId=${project.id}`} className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-full border border-border bg-white px-5 text-sm font-bold text-navy shadow-soft transition hover:bg-blue-mist">
+                <Download className="size-4" /> Deposit invoice
+              </Link>
+            ) : null}
+          </div>
         </div>
 
         <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

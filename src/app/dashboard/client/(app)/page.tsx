@@ -219,7 +219,13 @@ export default async function ClientOverviewPage() {
               {projects.slice(0, 4).map((project) => (
                 <li key={project.id} className="flex items-center justify-between gap-3 py-3">
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-navy">{project.title}</p>
+                    {["in_build", "monitoring", "delivered"].includes(project.status) ? (
+                      <Link href={`/dashboard/client/projects/${project.id}`} className="truncate text-sm font-semibold text-navy transition hover:text-blue-vivid">
+                        {project.title}
+                      </Link>
+                    ) : (
+                      <p className="truncate text-sm font-semibold text-navy">{project.title}</p>
+                    )}
                     <p className="truncate text-xs text-muted-foreground">
                       {project.summary ?? "Awaiting scope"}
                     </p>

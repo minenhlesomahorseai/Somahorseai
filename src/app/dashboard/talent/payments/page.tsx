@@ -1,95 +1,95 @@
-import { CalendarDays, CircleDollarSign, Landmark, LockKeyhole, ReceiptText } from "lucide-react";
+import Link from "next/link";
+import { ArrowUpRight, CheckCircle2, CircleDollarSign, Clock3, ReceiptText, ShieldCheck } from "lucide-react";
 
-import { PreviewPill, TalentGlassCard, TalentPageHeader, TalentSectionTitle } from "@/components/dashboard/talent-ui";
-import { fetchTalentProjects, loadTalentSession } from "@/lib/dashboard/talent";
-import { createClient } from "@/lib/supabase/server";
+import { TalentEmptyState, TalentGlassCard, TalentPageHeader, TalentSectionTitle } from "@/components/dashboard/talent-ui";
+import { loadTalentSession } from "@/lib/dashboard/talent";
+import { formatZar } from "@/lib/projects/pricing";
+import { createAdminClient } from "@/lib/supabase/admin";
+
+interface TalentEarningRow {
+  id: string;
+  project_id: string;
+  payment_id: string;
+  client_payment_amount: number;
+  talent_pool_amount: number;
+  amount_owed: number;
+  share_percent: number;
+  status: "owed" | "paid" | "held" | "cancelled";
+  paid_at: string | null;
+  payout_reference: string | null;
+  created_at: string;
+  projects: { title: string } | Array<{ title: string }> | null;
+  payments: { kind: string; description: string | null; paid_at: string | null } | Array<{ kind: string; description: string | null; paid_at: string | null }> | null;
+}
 
 export default async function TalentPaymentsPage() {
-  await loadTalentSession();
-  const supabase = await createClient();
-  const projects = await fetchTalentProjects(supabase);
-  const activeProjects = projects.filter((project) => ["assigned", "active"].includes(project.assignment_status));
+  const { userId } = await loadTalentSession();
+  const admin = createAdminClient();
+  if (!admin) throw new Error("SUPABASE_SERVICE_ROLE_KEY is required for the talent earnings ledger");
+  const { data } = await admin
+    .from("talent_earnings")
+    .select("id, project_id, payment_id, client_payment_amount, talent_pool_amount, amount_owed, share_percent, status, paid_at, payout_reference, created_at, projects(title), payments(kind, description, paid_at)")
+    .eq("talent_id", userId)
+    .order("created_at", { ascending: false });
+  const earnings = (data ?? []) as unknown as TalentEarningRow[];
+  const total = earnings.filter((item) => !["cancelled", "held"].includes(item.status)).reduce((sum, item) => sum + Number(item.amount_owed), 0);
+  const owed = earnings.filter((item) => item.status === "owed").reduce((sum, item) => sum + Number(item.amount_owed), 0);
+  const paid = earnings.filter((item) => item.status === "paid").reduce((sum, item) => sum + Number(item.amount_owed), 0);
 
   return (
     <div className="space-y-6">
-      <TalentPageHeader
-        eyebrow="Earnings"
-        title="Payments"
-        description="A clear home for milestone earnings, payout schedules, and payment history."
-        action={<PreviewPill />}
-      />
+      <TalentPageHeader eyebrow="Earnings" title="Payments" description="Every verified client payment, your exact project allocation, and the payout status from the control room." />
 
-      <div className="grid gap-4 lg:grid-cols-12">
-        <section className="talent-glass-dark relative overflow-hidden rounded-[2rem] p-6 text-white sm:p-8 lg:col-span-7">
-          <div className="absolute -right-14 -top-14 size-48 rounded-full bg-white/8 blur-xl" />
-          <div className="relative">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-semibold text-white/55">Available balance</p>
-                <p className="mt-3 font-display text-4xl font-bold">R0.00</p>
-                <p className="mt-1 text-xs text-white/50">No released milestones yet</p>
-              </div>
-              <span className="grid size-12 place-items-center rounded-2xl border border-white/15 bg-white/10">
-                <CircleDollarSign className="size-6" aria-hidden />
-              </span>
-            </div>
-            <div className="mt-10 grid grid-cols-2 gap-3">
-              <div className="rounded-2xl border border-white/10 bg-white/8 p-3.5 backdrop-blur-xl">
-                <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-white/45">Pending</p>
-                <p className="mt-1 font-display text-lg font-bold">R0.00</p>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-white/8 p-3.5 backdrop-blur-xl">
-                <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-white/45">Paid to date</p>
-                <p className="mt-1 font-display text-lg font-bold">R0.00</p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <TalentGlassCard className="lg:col-span-5">
-          <TalentSectionTitle title="Payout setup" icon={Landmark} />
-          <div className="rounded-2xl border border-dashed border-blue-vivid/20 bg-white/45 p-5">
-            <div className="flex items-center gap-3">
-              <span className="grid size-10 place-items-center rounded-xl bg-blue-vivid/10 text-blue-vivid">
-                <LockKeyhole className="size-5" aria-hidden />
-              </span>
-              <div>
-                <p className="text-sm font-bold text-navy">Secure payout details</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">Bank and wallet setup is coming next.</p>
-              </div>
-            </div>
-            <button type="button" disabled className="mt-5 w-full rounded-xl bg-navy/8 px-4 py-3 text-xs font-bold text-navy/40">
-              Connect payout method
-            </button>
-          </div>
-          <p className="mt-4 text-xs leading-5 text-muted-foreground">Payment details will be encrypted and kept separate from your public talent profile.</p>
-        </TalentGlassCard>
-
-        <TalentGlassCard className="lg:col-span-12">
-          <TalentSectionTitle title="Upcoming milestones" icon={CalendarDays} />
-          {activeProjects.length ? (
-            <div className="grid gap-3 sm:grid-cols-2">
-              {activeProjects.map((project) => (
-                <div key={project.project_id} className="rounded-2xl bg-white/50 p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-bold text-navy">{project.title}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">Milestone schedule is being prepared</p>
-                    </div>
-                    <PreviewPill />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center rounded-2xl border border-dashed border-border bg-white/35 px-5 py-9 text-center">
-              <ReceiptText className="size-6 text-blue-vivid/45" aria-hidden />
-              <p className="mt-3 text-sm font-bold text-navy">No payout activity yet</p>
-              <p className="mt-1 max-w-sm text-xs leading-5 text-muted-foreground">Milestone schedules will populate here when an assignment begins.</p>
-            </div>
-          )}
-        </TalentGlassCard>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="talent-glass-dark rounded-[1.75rem] p-5 text-white sm:p-6">
+          <div className="flex items-center justify-between"><p className="text-xs font-semibold text-white/55">Total earned</p><CircleDollarSign className="size-5 text-accent-teal" aria-hidden /></div>
+          <p className="mt-3 font-display text-3xl font-bold">{formatZar(total)}</p>
+          <p className="mt-1 text-[11px] text-white/45">Across {earnings.length} allocations</p>
+        </div>
+        <div className="talent-glass rounded-[1.75rem] p-5 sm:p-6">
+          <div className="flex items-center justify-between"><p className="text-xs font-semibold text-muted-foreground">Owed to you</p><Clock3 className="size-5 text-accent-amber" aria-hidden /></div>
+          <p className="mt-3 font-display text-3xl font-bold text-navy">{formatZar(owed)}</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">Awaiting admin payout</p>
+        </div>
+        <div className="talent-glass rounded-[1.75rem] p-5 sm:p-6">
+          <div className="flex items-center justify-between"><p className="text-xs font-semibold text-muted-foreground">Received</p><CheckCircle2 className="size-5 text-accent-teal" aria-hidden /></div>
+          <p className="mt-3 font-display text-3xl font-bold text-navy">{formatZar(paid)}</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">Marked paid by control room</p>
+        </div>
       </div>
+
+      <TalentGlassCard>
+        <TalentSectionTitle title="Earnings ledger" icon={ReceiptText} />
+        {earnings.length ? (
+          <div className="space-y-3">
+            {earnings.map((earning) => {
+              const project = relation(earning.projects);
+              const payment = relation(earning.payments);
+              return (
+                <div key={earning.id} className="flex flex-col gap-3 rounded-2xl border border-white/75 bg-white/48 p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2"><p className="truncate text-sm font-bold text-navy">{project?.title ?? "Somahorse project"}</p><Status value={earning.status} /></div>
+                    <p className="mt-1 text-xs capitalize text-muted-foreground">{payment?.description ?? payment?.kind?.replaceAll("_", " ") ?? "Project payment"} · {formatDate(payment?.paid_at ?? earning.created_at)}</p>
+                    <p className="mt-1 text-[10px] text-muted-foreground">Client paid {formatZar(earning.client_payment_amount)} · 60% pool {formatZar(earning.talent_pool_amount)} · Your share {earning.share_percent}%</p>
+                    {earning.payout_reference ? <p className="mt-1 text-[10px] font-semibold text-accent-teal">Reference: {earning.payout_reference}</p> : null}
+                  </div>
+                  <div className="flex items-center justify-between gap-4 sm:justify-end"><p className="font-display text-xl font-bold text-navy">{formatZar(earning.amount_owed)}</p><Link href={`/dashboard/talent/projects/${earning.project_id}`} className="grid size-9 place-items-center rounded-full border border-border bg-white text-navy-mid" aria-label="Open project workspace"><ArrowUpRight className="size-4" aria-hidden /></Link></div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <TalentEmptyState icon={ReceiptText} title="No earnings recorded yet" description="When a client payment is verified, your share of the project’s 60% talent pool appears here automatically." />
+        )}
+      </TalentGlassCard>
+
+      <TalentGlassCard>
+        <div className="flex items-start gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-accent-teal/10 text-accent-teal"><ShieldCheck className="size-5" aria-hidden /></span><div><p className="text-sm font-bold text-navy">Transparent 60/40 accounting</p><p className="mt-1 text-xs leading-5 text-muted-foreground">Sixty percent of each verified project payment is allocated across the assigned talent team. Client payment confirmation and admin payout settlement remain separate auditable records.</p></div></div>
+      </TalentGlassCard>
     </div>
   );
 }
+
+function relation<T>(value: T | T[] | null): T | null { return Array.isArray(value) ? value[0] ?? null : value; }
+function Status({ value }: { value: TalentEarningRow["status"] }) { return <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold capitalize ${value === "paid" ? "bg-accent-teal/10 text-accent-teal" : value === "owed" ? "bg-accent-amber/10 text-accent-amber" : "bg-blue-light text-navy-mid"}`}>{value}</span>; }
+function formatDate(value: string | null) { if (!value) return "Date pending"; return new Intl.DateTimeFormat("en-ZA", { day: "numeric", month: "short", year: "numeric" }).format(new Date(value)); }

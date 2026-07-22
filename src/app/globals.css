@@ -327,6 +327,30 @@ button:focus-visible {
   box-shadow: 0 28px 64px -34px hsl(var(--navy) / 0.72), inset 0 1px 0 rgb(255 255 255 / 0.16);
 }
 
+/* Project workspace — a denser operational glass system shared by all roles. */
+.workspace-glass {
+  border: 1px solid rgb(255 255 255 / 0.74);
+  background: linear-gradient(145deg, rgb(255 255 255 / 0.76), rgb(236 245 255 / 0.5));
+  box-shadow: 0 20px 55px -34px hsl(var(--navy) / 0.38), inset 0 1px 0 rgb(255 255 255 / 0.82);
+  backdrop-filter: blur(20px) saturate(1.16);
+  -webkit-backdrop-filter: blur(20px) saturate(1.16);
+}
+
+.workspace-hero {
+  border: 1px solid rgb(255 255 255 / 0.14);
+  background:
+    radial-gradient(55% 120% at 100% 0%, hsl(var(--blue-vivid) / 0.55), transparent 68%),
+    radial-gradient(45% 100% at 0% 100%, hsl(var(--accent-teal) / 0.18), transparent 72%),
+    linear-gradient(140deg, hsl(var(--navy)), hsl(var(--navy-mid)));
+  box-shadow: 0 28px 70px -38px hsl(var(--navy) / 0.78), inset 0 1px 0 rgb(255 255 255 / 0.14);
+}
+
+.workspace-chat {
+  background: linear-gradient(145deg, rgb(255 255 255 / 0.84), rgb(236 245 255 / 0.62));
+  backdrop-filter: blur(22px) saturate(1.15);
+  -webkit-backdrop-filter: blur(22px) saturate(1.15);
+}
+
 .talent-card-enter {
   animation: talent-rise 560ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
