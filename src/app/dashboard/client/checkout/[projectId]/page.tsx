@@ -4,6 +4,11 @@ import { notFound, redirect } from "next/navigation";
 
 import { loadClientSession } from "@/lib/dashboard/session";
 import {
+  formatMinorMoney,
+  formatMoney,
+  normalizeCurrencyCode,
+} from "@/lib/currency/config";
+import {
   paddleClientToken,
   publicPaddleEnvironment,
 } from "@/lib/payments/paddle";
@@ -21,14 +26,27 @@ export default async function CheckoutPage({
   const { projectId } = await params;
   const { userId, user } = await loadClientSession();
   const supabase = await createClient();
-  const { data: project } = await supabase
-    .from("projects")
-    .select(
-      "id, title, summary, status, proposal, timeline_weeks, build_fee_amount, deposit_amount, monthly_fee_amount, payment_status, paddle_transaction_id, matched_team"
-    )
-    .eq("id", projectId)
-    .eq("client_id", userId)
-    .maybeSingle();
+  const [{ data: project }, { data: payment }] = await Promise.all([
+    supabase
+      .from("projects")
+      .select(
+        "id, title, summary, status, proposal, timeline_weeks, build_fee_amount, deposit_amount, monthly_fee_amount, payment_status, paddle_transaction_id, matched_team"
+      )
+      .eq("id", projectId)
+      .eq("client_id", userId)
+      .maybeSingle(),
+    supabase
+      .from("payments")
+      .select(
+        "presentment_amount_minor, presentment_currency, fx_rate, currency"
+      )
+      .eq("project_id", projectId)
+      .eq("client_id", userId)
+      .eq("kind", "deposit")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
 
   if (!project) notFound();
   if (project.payment_status === "paid") {
@@ -37,6 +55,19 @@ export default async function CheckoutPage({
 
   const token = paddleClientToken();
   const proposal = project.proposal as ProjectProposal | null;
+  const presentmentCurrency = normalizeCurrencyCode(
+    payment?.presentment_currency ?? payment?.currency
+  );
+  const fxRate = Number(payment?.fx_rate) || 1;
+  const localized = (amount: number) =>
+    formatMoney(amount * fxRate, presentmentCurrency, {
+      maximumFractionDigits: 0,
+    });
+  const dueToday =
+    formatMinorMoney(
+      payment?.presentment_amount_minor,
+      payment?.presentment_currency
+    ) ?? formatZar(Number(project.deposit_amount ?? 0));
 
   return (
     <main className="intake-field min-h-screen px-4 py-6 text-navy sm:px-6 sm:py-10">
@@ -65,22 +96,22 @@ export default async function CheckoutPage({
                 Due today
               </p>
               <p className="mt-1 font-display text-4xl font-bold">
-                {formatZar(Number(project.deposit_amount ?? 0))}
+                {dueToday}
               </p>
               <p className="mt-2 text-xs leading-relaxed text-white/65">
-                One-third project deposit. Payment activates the team and starts delivery.
+                One-third project deposit before any applicable tax. Payment activates the team and starts delivery.
               </p>
             </div>
 
             <dl className="mt-6 divide-y divide-border/70 text-sm">
-              <SummaryRow label="Fixed build fee" value={formatZar(Number(project.build_fee_amount ?? 0))} />
+              <SummaryRow label="Fixed build fee" value={localized(Number(project.build_fee_amount ?? 0))} />
               <SummaryRow label="Delivery" value={`${project.timeline_weeks ?? proposal?.timelineWeeks ?? "—"} weeks`} />
               <SummaryRow label="Nominated team" value={`${project.matched_team?.length ?? 0} specialists`} />
-              <SummaryRow label="Monthly after launch" value={`${formatZar(Number(project.monthly_fee_amount ?? 0))} / month`} />
+              <SummaryRow label="Monthly after launch" value={`${localized(Number(project.monthly_fee_amount ?? 0))} / month`} />
             </dl>
 
             <div className="mt-6 rounded-2xl border border-border/70 bg-white/55 p-4 text-xs leading-relaxed text-muted-foreground">
-              The remaining build fee is staged through delivery. Paddle provides the payment receipt and invoice; Somahorse.ai keeps it available in billing.
+              The project amount is locked in {presentmentCurrency}. Paddle calculates any applicable tax in checkout and its invoice records the final total. The remaining build fee is staged through delivery.
             </div>
           </section>
 
@@ -117,4 +148,3 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
-

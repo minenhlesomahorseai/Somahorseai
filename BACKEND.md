@@ -6,8 +6,23 @@
 - Database migrations already create profiles, client/talent onboarding, assessments, intake chats, projects, payments, assignments, notifications, and helper RPCs.
 - Project intake works through `/api/projects/intake`, saves chat messages, uses Gemini when configured, and keeps a fallback flow.
 - Developer matching works through `/api/projects/match`, using available certified talent from Supabase.
-- Paddle checkout is wired for project deposits, invoice lookup, payment status polling, and webhook-based project activation.
-- Email helpers are in place for welcome emails, funded project alerts, client confirmation, and talent assignment notices.
+- Paddle checkout is wired for localized project deposits and milestones,
+  immutable presentment-currency snapshots, invoice lookup, payment status
+  polling, and webhook-based project activation.
+- Transactional email uses a durable Supabase outbox with dedupe keys, retries,
+  branded HTML plus plain text, attachments, and admin delivery health.
+- Talent certification includes complete lifecycle email coverage and a
+  two-sided seven-day interview negotiation flow with Google Calendar links.
+
+## Required production setup
+
+- Apply all migrations through `015_currency_payment_ledger.sql`.
+- Verify a Resend sending domain and set `EMAIL_FROM`; the test sender is not a
+  production fallback.
+- Configure a five-minute scheduler for `GET /api/email/process` using the
+  `CRON_SECRET` bearer token.
+- Set `OPEN_EXCHANGE_RATES_APP_ID` for marketing estimates and talent payouts
+  in currencies beyond Paddle's supported checkout list.
 
 ## Next 3 Backend Tasks
 

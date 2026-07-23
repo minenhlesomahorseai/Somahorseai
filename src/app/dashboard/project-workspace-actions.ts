@@ -8,6 +8,13 @@ import { isAdminUser } from "@/lib/auth/admin";
 import { fetchProfile } from "@/lib/auth/profile";
 import { ensureProjectWorkspace } from "@/lib/ai/workspace";
 import {
+  formatMoney,
+  majorToMinor,
+  normalizeCurrencyCode,
+} from "@/lib/currency/config";
+import { quoteFx } from "@/lib/currency/fx";
+import { sendTalentPayout, sendTalentPayoutAdmin } from "@/lib/email";
+import {
   createWorkspacePaymentTransaction,
   paddleCheckoutConfigured,
 } from "@/lib/payments/paddle";
@@ -183,7 +190,12 @@ export async function prepareWorkspacePayment(formData: FormData): Promise<void>
   }
 
   const paymentId = randomUUID();
-  const transaction = await createWorkspacePaymentTransaction({
+  const { data: currencyProfile } = await admin
+    .from("profiles")
+    .select("preferred_currency, country_code")
+    .eq("id", user.id)
+    .maybeSingle();
+  const localized = await createWorkspacePaymentTransaction({
     paymentId,
     projectId,
     clientId: user.id,
@@ -193,7 +205,10 @@ export async function prepareWorkspacePayment(formData: FormData): Promise<void>
     kind,
     milestoneId,
     periodKey,
+    preferredCurrency: currencyProfile?.preferred_currency,
+    countryCode: currencyProfile?.country_code,
   });
+  const { transaction, quote } = localized;
   const { error: insertError } = await admin.from("payments").insert({
     id: paymentId,
     project_id: projectId,
@@ -202,12 +217,25 @@ export async function prepareWorkspacePayment(formData: FormData): Promise<void>
     kind,
     amount,
     currency: project.currency ?? "ZAR",
+    base_currency: project.currency ?? "ZAR",
+    presentment_amount_minor: quote.presentmentAmountMinor,
+    presentment_currency: quote.presentmentCurrency,
+    fx_rate: quote.fxRate,
+    fx_source: quote.fxSource,
+    fx_quoted_at: quote.quotedAt,
     status: "pending",
     workspace_milestone_id: milestoneId,
     period_key: periodKey,
     description,
   });
   if (insertError) throw new Error(insertError.message);
+  await admin
+    .from("projects")
+    .update({
+      client_currency: quote.requestedCurrency,
+      client_country_code: quote.countryCode,
+    })
+    .eq("id", projectId);
 
   if (milestoneId) {
     await admin.from("project_milestones").update({ payment_status: "pending" }).eq("id", milestoneId);
@@ -221,6 +249,11 @@ export async function settleTalentEarning(formData: FormData): Promise<void> {
   const projectId = String(formData.get("projectId") ?? "");
   const reference = String(formData.get("reference") ?? "").trim().slice(0, 160);
   if (!earningId || !projectId) throw new Error("Invalid payout record");
+  if (!reference) {
+    throw new Error(
+      "Enter the real payout reference before marking this earning paid"
+    );
+  }
 
   const supabase = await createClient();
   const {
@@ -230,13 +263,53 @@ export async function settleTalentEarning(formData: FormData): Promise<void> {
   const admin = createAdminClient();
   if (!admin) throw new Error("Admin payouts are not configured");
 
+  const { data: pendingEarning } = await admin
+    .from("talent_earnings")
+    .select("id, talent_id, amount_owed, base_currency, status")
+    .eq("id", earningId)
+    .eq("project_id", projectId)
+    .maybeSingle();
+  if (!pendingEarning || pendingEarning.status !== "owed") {
+    throw new Error("Earning is already settled");
+  }
+
+  const [
+    { data: talent },
+    { data: project },
+    { data: adminContacts },
+  ] = await Promise.all([
+    admin
+      .from("profiles")
+      .select("full_name, email, preferred_currency")
+      .eq("id", pendingEarning.talent_id)
+      .maybeSingle(),
+    admin.from("projects").select("title").eq("id", projectId).maybeSingle(),
+    admin.from("admins").select("email"),
+  ]);
+  if (!talent || !project) {
+    throw new Error("Could not load payout recipient details");
+  }
+
+  const baseCurrency = normalizeCurrencyCode(pendingEarning.base_currency);
+  const payoutCurrency = normalizeCurrencyCode(talent.preferred_currency);
+  const fx = await quoteFx(
+    Number(pendingEarning.amount_owed),
+    baseCurrency,
+    payoutCurrency
+  );
   const paidAt = new Date().toISOString();
+  const payoutAmountMinor = majorToMinor(fx.quoteAmount, payoutCurrency);
   const { data: earning, error } = await admin
     .from("talent_earnings")
     .update({
       status: "paid",
       paid_at: paidAt,
-      payout_reference: reference || `Manual payout · ${paidAt.slice(0, 10)}`,
+      payout_reference: reference,
+      payout_amount_minor: payoutAmountMinor,
+      payout_currency: payoutCurrency,
+      payout_fx_rate: fx.rate,
+      payout_fx_source: fx.source,
+      payout_fx_quoted_at: fx.quotedAt,
     })
     .eq("id", earningId)
     .eq("project_id", projectId)
@@ -252,8 +325,44 @@ export async function settleTalentEarning(formData: FormData): Promise<void> {
     type: "payout_completed",
     title: "Project earnings paid",
     message: "The control room marked your project earnings as paid.",
-    payload: { earning_id: earningId, amount: earning.amount_owed },
+    payload: {
+      earning_id: earningId,
+      base_amount: earning.amount_owed,
+      base_currency: baseCurrency,
+      payout_amount_minor: payoutAmountMinor,
+      payout_currency: payoutCurrency,
+      reference,
+    },
   });
+  const payoutAmount = formatMoney(fx.quoteAmount, payoutCurrency);
+  const baseAmount = formatMoney(Number(earning.amount_owed), baseCurrency, {
+    maximumFractionDigits: 0,
+  });
+  await Promise.all([
+    sendTalentPayout({
+      to: talent.email,
+      firstName: talent.full_name?.trim().split(/\s+/)[0] ?? null,
+      talentId: earning.talent_id,
+      projectId,
+      earningId,
+      projectTitle: project.title,
+      payoutAmount,
+      baseAmount,
+      reference,
+    }),
+    ...(adminContacts ?? []).map((contact) =>
+      sendTalentPayoutAdmin({
+        to: contact.email,
+        projectId,
+        earningId,
+        talentName: talent.full_name ?? "Talent member",
+        projectTitle: project.title,
+        payoutAmount,
+        baseAmount,
+        reference,
+      })
+    ),
+  ]);
   revalidateWorkspacePaths(projectId);
   revalidatePath("/admin/projects");
 }

@@ -8,7 +8,7 @@ import { useState } from "react";
 const EASE = [0.16, 1, 0.3, 1] as const;
 
 const FAQS = [
-  { question: "Are the budget bands fixed packages?", answer: "No. They are a simple way to describe the likely scale of a project. Your final ZAR quote is based on the agreed scope, complexity, integrations, delivery plan, and any monitoring requirements." },
+  { question: "Are the budget bands fixed packages?", answer: "No. They are a simple way to describe the likely scale of a project. Your final quote is based on the agreed scope, complexity, integrations, delivery plan, and any monitoring requirements." },
   { question: "How is the final project price decided?", answer: "You describe the problem in plain language, the platform turns it into an initial structured scope, and the plan is refined before a quote is approved. You can review the build fee, deposit, milestones, and monthly monitoring amount before paying." },
   { question: "Do I pay the entire build fee upfront?", answer: "No. The start payment is approximately one-third of the build fee. The remaining build amount is staged through the project’s delivery milestones, so payments stay connected to visible progress." },
   { question: "When does monthly monitoring begin?", answer: "Only after the system is live, and only when monitoring is included in the approved quote. Its amount is shown separately from the build fee." },
@@ -17,7 +17,13 @@ const FAQS = [
   { question: "Can the scope change after the project starts?", answer: "A meaningful scope change may affect milestones, delivery timing, or price. It should be reviewed and agreed before it becomes part of the active delivery plan." },
 ] as const;
 
-export function PricingFAQ({ ctaHref }: { ctaHref: string }) {
+export function PricingFAQ({
+  ctaHref,
+  currencyCode,
+}: {
+  ctaHref: string;
+  currencyCode: string;
+}) {
   return (
     <section className="px-4 py-20 sm:px-6 sm:py-28 lg:px-8">
       <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[minmax(17rem,0.48fr)_minmax(0,0.8fr)] lg:gap-20">
@@ -26,7 +32,7 @@ export function PricingFAQ({ ctaHref }: { ctaHref: string }) {
             <HelpCircle className="size-3.5" aria-hidden /> Pricing FAQ
           </div>
           <h2 className="mt-5 text-balance font-display text-3xl font-bold tracking-tight text-navy sm:text-5xl">The useful details, without the small print maze.</h2>
-          <p className="mt-5 text-sm leading-7 text-muted-foreground sm:text-base">If your project has unusual commercial or delivery requirements, start the scope and give us the context.</p>
+          <p className="mt-5 text-sm leading-7 text-muted-foreground sm:text-base">Planning estimates are shown in {currencyCode}. If your project has unusual commercial or delivery requirements, start the scope and give us the context.</p>
           <Link href={ctaHref} className="mt-7 inline-flex min-h-11 items-center gap-2 rounded-full bg-navy-mid px-5 text-sm font-bold text-white transition hover:bg-navy">
             Start a project <ArrowRight className="size-4" aria-hidden />
           </Link>

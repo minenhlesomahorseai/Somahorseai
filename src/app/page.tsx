@@ -9,9 +9,23 @@ import { HomeFAQ } from "@/components/home/home-faq";
 import { FinalCTA } from "@/components/home/final-cta";
 import { Footer } from "@/components/home/footer";
 import { getMarketingUser } from "@/lib/auth/marketing";
+import { BASE_CURRENCY, formatCompactMoney } from "@/lib/currency/config";
+import { getVisitorCurrencyContext } from "@/lib/currency/context";
+import { tryQuoteFx } from "@/lib/currency/fx";
 
 export default async function Home() {
-  const user = await getMarketingUser();
+  const [user, visitor] = await Promise.all([
+    getMarketingUser(),
+    getVisitorCurrencyContext(),
+  ]);
+  const requestedCurrency = user?.preferredCurrency ?? visitor.currency;
+  const fx = await tryQuoteFx(1, BASE_CURRENCY, requestedCurrency);
+  const currency = fx ? requestedCurrency : BASE_CURRENCY;
+  const engagementValue = formatCompactMoney(
+    2_800_000 * (fx?.rate ?? 1),
+    currency
+  );
+
   return (
     <>
       <FloatingNav user={user} />
@@ -21,7 +35,7 @@ export default async function Home() {
         <HowItWorks />
         <ShowcaseGallery />
         <IntelligenceBand />
-        <MetricsStrip />
+        <MetricsStrip engagementValue={engagementValue} />
         <HomeFAQ />
         <FinalCTA user={user} />
       </main>

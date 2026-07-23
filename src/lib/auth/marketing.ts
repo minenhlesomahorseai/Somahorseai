@@ -10,6 +10,8 @@ export interface MarketingUser {
   fullName: string | null;
   firstName: string | null;
   initials: string;
+  preferredCurrency: string;
+  countryCode: string | null;
   dashboardPath: string;
   /** Where the primary CTA should lead. Clients get the project intake. */
   startProjectPath: string | null;
@@ -37,6 +39,8 @@ export async function getMarketingUser(): Promise<MarketingUser | null> {
     fullName,
     firstName: fullName ? fullName.trim().split(/\s+/)[0] : null,
     initials: buildInitials(fullName, profile.email ?? user.email ?? null),
+    preferredCurrency: profile.preferred_currency,
+    countryCode: profile.country_code,
     dashboardPath: getDashboardPath(profile.role),
     startProjectPath:
       profile.role === "client" ? "/dashboard/client/new-project" : null,

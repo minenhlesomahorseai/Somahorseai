@@ -53,4 +53,6 @@ export interface ClientContext {
   problem: string | null;
   timeline: string | null;
   budgetRange: string | null;
+  preferredCurrency: string;
+  countryCode: string | null;
 }

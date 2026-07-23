@@ -1,4 +1,6 @@
 import { aiConfigured } from "@/lib/ai/provider";
+import { BASE_CURRENCY } from "@/lib/currency/config";
+import { tryQuoteFx } from "@/lib/currency/fx";
 import { loadClientSession } from "@/lib/dashboard/session";
 import { paddleCheckoutConfigured } from "@/lib/payments/paddle";
 import { normalizeIntakeState } from "@/lib/projects/pricing";
@@ -35,6 +37,11 @@ export default async function NewProjectPage() {
         .eq("conversation_id", initialConversation.id)
         .order("created_at", { ascending: true })
     : { data: [] };
+  const displayQuote = await tryQuoteFx(
+    1,
+    BASE_CURRENCY,
+    context.preferredCurrency
+  );
 
   return (
     <ProjectIntakeChat
@@ -44,6 +51,10 @@ export default async function NewProjectPage() {
       initialConversation={initialConversation}
       initialConversations={initialConversations}
       initialMessages={initialMessages ?? []}
+      displayCurrency={
+        displayQuote ? context.preferredCurrency : BASE_CURRENCY
+      }
+      displayRate={displayQuote?.rate ?? 1}
     />
   );
 }

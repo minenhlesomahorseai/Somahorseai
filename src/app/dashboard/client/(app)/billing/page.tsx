@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { CreditCard, FileText, Plus, ReceiptText, ShieldCheck } from "lucide-react";
 
+import { formatMinorMoney } from "@/lib/currency/config";
 import { loadClientSession } from "@/lib/dashboard/session";
 import { formatZar } from "@/lib/projects/pricing";
 import { createClient } from "@/lib/supabase/server";
@@ -11,6 +12,8 @@ interface PaymentRow {
   kind: string;
   amount: number;
   currency: string;
+  presentment_amount_minor: number | null;
+  presentment_currency: string | null;
   status: "pending" | "paid" | "failed" | "refunded";
   invoice_number: string | null;
   paid_at: string | null;
@@ -23,14 +26,26 @@ export default async function BillingPage() {
   const { data } = await supabase
     .from("payments")
     .select(
-      "id, project_id, kind, amount, currency, status, invoice_number, paid_at, created_at, projects(title)"
+      "id, project_id, kind, amount, currency, presentment_amount_minor, presentment_currency, status, invoice_number, paid_at, created_at, projects(title)"
     )
     .eq("client_id", userId)
     .order("created_at", { ascending: false });
   const payments = (data ?? []) as PaymentRow[];
-  const paidTotal = payments
-    .filter((payment) => payment.status === "paid")
-    .reduce((total, payment) => total + Number(payment.amount), 0);
+  const paidByCurrency = new Map<string, number>();
+  for (const payment of payments.filter((item) => item.status === "paid")) {
+    const currency = payment.presentment_currency ?? payment.currency;
+    const amountMinor =
+      payment.presentment_amount_minor ?? Number(payment.amount) * 100;
+    paidByCurrency.set(
+      currency,
+      (paidByCurrency.get(currency) ?? 0) + amountMinor
+    );
+  }
+  const paidTotal =
+    [...paidByCurrency.entries()]
+      .map(([currency, amountMinor]) => formatMinorMoney(amountMinor, currency))
+      .filter(Boolean)
+      .join(" + ") || formatZar(0);
 
   return (
     <div className="space-y-6">
@@ -55,10 +70,10 @@ export default async function BillingPage() {
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="rounded-3xl bg-navy p-5 text-white shadow-glow">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold text-white/60">Confirmed project payments</p>
+            <p className="text-xs font-semibold text-white/60">Confirmed project amounts</p>
             <CreditCard className="size-5 text-white/55" aria-hidden />
           </div>
-          <p className="mt-3 font-display text-3xl font-bold">{formatZar(paidTotal)}</p>
+          <p className="mt-3 font-display text-3xl font-bold">{paidTotal}</p>
           <p className="mt-1 text-xs text-white/55">Across {payments.filter((payment) => payment.status === "paid").length} paid invoices</p>
         </div>
         <div className="rounded-3xl border border-border/70 bg-white/80 p-5 shadow-card">
@@ -67,7 +82,7 @@ export default async function BillingPage() {
             <ShieldCheck className="size-5 text-accent-teal" aria-hidden />
           </div>
           <p className="mt-3 text-sm font-bold text-navy">Projects activate only after verified payment.</p>
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Paddle handles payment details, tax, receipts, and invoice documents.</p>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Paddle handles payment details and tax. Its invoices are the final record of totals charged.</p>
         </div>
       </div>
 
@@ -95,7 +110,12 @@ export default async function BillingPage() {
                   </p>
                 </div>
                 <div className="flex items-center justify-between gap-4 sm:justify-end">
-                  <p className="font-display text-lg font-bold text-navy">{formatZar(Number(payment.amount))}</p>
+                  <p className="font-display text-lg font-bold text-navy">
+                    {formatMinorMoney(
+                      payment.presentment_amount_minor,
+                      payment.presentment_currency
+                    ) ?? formatZar(Number(payment.amount))}
+                  </p>
                   {payment.status === "paid" ? (
                     <a
                       href={`/api/paddle/invoice?projectId=${payment.project_id}`}

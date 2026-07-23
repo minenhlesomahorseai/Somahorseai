@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 
 import { getDashboardPath } from "@/lib/auth/redirect";
+import { sendClientOnboardingReceived } from "@/lib/email";
 import { createClient } from "@/lib/supabase/server";
 
 export interface ClientStepInput {
@@ -33,6 +34,8 @@ async function persist(input: ClientStepInput, submitted: boolean) {
   if (error) {
     throw new Error(error.message);
   }
+
+  return { supabase, user };
 }
 
 export async function saveClientProgress(input: ClientStepInput) {
@@ -40,6 +43,17 @@ export async function saveClientProgress(input: ClientStepInput) {
 }
 
 export async function submitClientOnboarding(input: ClientStepInput) {
-  await persist(input, true);
+  const { supabase, user } = await persist(input, true);
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("full_name, email")
+    .eq("id", user.id)
+    .maybeSingle();
+  const fullName = (profile?.full_name as string | null) ?? null;
+  await sendClientOnboardingReceived({
+    to: (profile?.email as string | null) ?? user.email ?? null,
+    firstName: fullName?.trim().split(/\s+/)[0] ?? null,
+    userId: user.id,
+  });
   redirect(getDashboardPath("client"));
 }

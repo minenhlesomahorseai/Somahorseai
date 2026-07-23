@@ -28,6 +28,9 @@ import { FloatingNav } from "@/components/home/floating-nav";
 import { Footer } from "@/components/home/footer";
 import { Reveal } from "@/components/home/reveal";
 import { getMarketingUser } from "@/lib/auth/marketing";
+import { BASE_CURRENCY, formatMoney } from "@/lib/currency/config";
+import { getVisitorCurrencyContext } from "@/lib/currency/context";
+import { tryQuoteFx } from "@/lib/currency/fx";
 import { DeveloperFAQ } from "./developer-faq";
 
 export const metadata: Metadata = {
@@ -99,7 +102,17 @@ const STANDARDS = [
 ] as const;
 
 export default async function DevelopersPage() {
-  const user = await getMarketingUser();
+  const [user, visitor] = await Promise.all([
+    getMarketingUser(),
+    getVisitorCurrencyContext(),
+  ]);
+  const requestedCurrency = user?.preferredCurrency ?? visitor.currency;
+  const fx = await tryQuoteFx(1, BASE_CURRENCY, requestedCurrency);
+  const currency = fx ? requestedCurrency : BASE_CURRENCY;
+  const localMoney = (amountZar: number) =>
+    formatMoney(amountZar * (fx?.rate ?? 1), currency, {
+      maximumFractionDigits: 0,
+    });
   const applyHref = user?.dashboardPath ?? "/signup?role=developer";
   const applyLabel = user
     ? user.role === "client"
@@ -142,7 +155,7 @@ export default async function DevelopersPage() {
             </Reveal>
 
             <Reveal delay={0.12} className="relative hidden min-w-0 lg:block">
-              <DeveloperWorkspacePreview />
+              <DeveloperWorkspacePreview earningAmount={localMoney(18_000)} />
             </Reveal>
           </div>
         </section>
@@ -267,10 +280,10 @@ export default async function DevelopersPage() {
             </div>
             <div className="bg-gradient-to-br from-navy to-navy-mid p-6 text-white sm:p-10 lg:p-12">
               <div className="flex items-center justify-between"><span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/45">Example verified payment</span><Coins className="size-5 text-blue-sky" aria-hidden /></div>
-              <p className="mt-4 font-display text-4xl font-bold">R100,000</p>
+              <p className="mt-4 font-display text-4xl font-bold">{localMoney(100_000)}</p>
               <div className="mt-7 space-y-3">
-                <PaymentLine label="Talent pool · 60%" value="R60,000" strong />
-                <PaymentLine label="Platform delivery share · 40%" value="R40,000" />
+                <PaymentLine label="Talent pool · 60%" value={localMoney(60_000)} strong />
+                <PaymentLine label="Platform delivery share · 40%" value={localMoney(40_000)} />
               </div>
               <div className="mt-6 border-t border-white/10 pt-5"><p className="text-xs font-bold text-white/80">For multi-person teams</p><p className="mt-1 text-[11px] leading-5 text-white/48">The talent pool is divided across assigned team members and tracked per person in the earnings ledger.</p></div>
             </div>
@@ -308,7 +321,11 @@ export default async function DevelopersPage() {
   );
 }
 
-function DeveloperWorkspacePreview() {
+function DeveloperWorkspacePreview({
+  earningAmount,
+}: {
+  earningAmount: string;
+}) {
   return (
     <div className="relative mx-auto max-w-2xl lg:ml-auto">
       <div className="pointer-events-none absolute -inset-6 rounded-[3rem] bg-gradient-to-br from-blue-vivid/16 to-talent-bright/10 blur-3xl" />
@@ -338,7 +355,7 @@ function DeveloperWorkspacePreview() {
             </div>
             <div className="rounded-[1.4rem] border border-white/10 bg-gradient-to-br from-blue-vivid/30 to-talent-bright/18 p-4">
               <div className="flex items-center justify-between"><span className="text-[9px] font-bold uppercase tracking-[0.12em] text-white/45">Your earnings</span><CircleDollarSign className="size-4 text-blue-sky" aria-hidden /></div>
-              <p className="mt-2 font-display text-2xl font-bold text-white">R18,000</p>
+              <p className="mt-2 font-display text-2xl font-bold text-white">{earningAmount}</p>
               <div className="mt-3 flex items-center justify-between text-[9px]"><span className="text-white/42">From verified payment</span><span className="rounded-full bg-white/10 px-2 py-1 font-bold text-blue-sky">Owed</span></div>
             </div>
           </div>

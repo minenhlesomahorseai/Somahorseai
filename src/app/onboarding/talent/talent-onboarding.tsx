@@ -1,48 +1,61 @@
 "use client";
 
-import { useState, useTransition } from "react";
 import Link from "next/link";
 import {
-  Clock,
-  ClipboardCheck,
-  Video,
-  Trophy,
-  XCircle,
-  CheckCircle2,
   Check,
+  ClipboardCheck,
+  Clock,
+  FileCode2,
+  Trophy,
+  Video,
+  XCircle,
 } from "lucide-react";
 
-import type { TalentOnboarding, TalentStage } from "@/lib/auth/types";
+import type {
+  InterviewSchedulingData,
+  TalentOnboarding as TalentOnboardingRecord,
+  TalentStage,
+} from "@/lib/auth/types";
 import {
   OnboardingCard,
   OnboardingShell,
-  StepNav,
 } from "@/components/onboarding/onboarding-ui";
-import { TalentProfileFlow } from "./profile-flow";
+import { InterviewScheduler } from "@/components/onboarding/interview-scheduler";
 
-import {
-  confirmTalentInterview,
-  submitTalentAssessment,
-} from "./actions";
+import { TalentProfileFlow } from "./profile-flow";
 
 export function TalentOnboarding({
   initial,
   firstName,
+  assessmentToken,
+  interview,
+  googleCalendarUrl,
 }: {
-  initial: TalentOnboarding;
+  initial: TalentOnboardingRecord;
   firstName: string | null;
+  assessmentToken: string | null;
+  interview: InterviewSchedulingData;
+  googleCalendarUrl: string | null;
 }) {
   if (initial.stage === "profile") {
     return <TalentProfileFlow initial={initial} firstName={firstName} />;
   }
-  return <TalentPipeline initial={initial} firstName={firstName} />;
+  return (
+    <TalentPipeline
+      initial={initial}
+      firstName={firstName}
+      assessmentToken={assessmentToken}
+      interview={interview}
+      googleCalendarUrl={googleCalendarUrl}
+    />
+  );
 }
 
 const PIPELINE: { stage: TalentStage; label: string }[] = [
   { stage: "pending_review", label: "Application review" },
   { stage: "assessment", label: "Technical assessment" },
   { stage: "interview", label: "Interview" },
-  { stage: "approved", label: "Approved" },
+  { stage: "approved", label: "Certified" },
 ];
 
 function pipelineIndex(stage: TalentStage): number {
@@ -65,9 +78,15 @@ function pipelineIndex(stage: TalentStage): number {
 function TalentPipeline({
   initial,
   firstName,
+  assessmentToken,
+  interview,
+  googleCalendarUrl,
 }: {
-  initial: TalentOnboarding;
+  initial: TalentOnboardingRecord;
   firstName: string | null;
+  assessmentToken: string | null;
+  interview: InterviewSchedulingData;
+  googleCalendarUrl: string | null;
 }) {
   const stage = initial.stage;
   const activeIndex = pipelineIndex(stage);
@@ -81,33 +100,53 @@ function TalentPipeline({
             icon={Clock}
             tone="amber"
             title="Your application is under review"
-            body="Our team is reviewing your profile. We'll unlock your technical assessment as soon as you're approved — check back here or watch your inbox."
+            body="We've received your complete profile and experience. Our team is reviewing it now, and we'll email you as soon as there is a decision."
           />
         ) : null}
 
         {stage === "assessment" ? (
-          <AssessmentStep initial={initial} firstName={firstName} />
+          <div className="py-4 text-center">
+            <div className="mx-auto mb-5 flex size-14 items-center justify-center rounded-full bg-accent-teal/15 text-accent-teal">
+              <FileCode2 className="size-7" />
+            </div>
+            <h1 className="font-display text-2xl font-bold text-navy">
+              Your assessment is ready{firstName ? `, ${firstName}` : ""}
+            </h1>
+            <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
+              Your application was approved. This private assessment is tailored
+              to your experience and must be completed in one timed sitting.
+            </p>
+            {assessmentToken ? (
+              <Link
+                href={`/assessment/${assessmentToken}`}
+                className="mt-7 inline-flex min-h-11 items-center justify-center rounded-full bg-navy-mid px-7 text-sm font-semibold text-white shadow-glow transition hover:bg-navy"
+              >
+                Open technical assessment
+              </Link>
+            ) : (
+              <p className="mx-auto mt-6 max-w-md rounded-xl border border-accent-amber/25 bg-accent-amber/10 px-4 py-3 text-sm font-medium text-accent-amber">
+                Your assessment link is being prepared. Refresh shortly or use
+                the private link in your approval email.
+              </p>
+            )}
+          </div>
         ) : null}
 
         {stage === "assessment_review" ? (
           <StatusScreen
             icon={ClipboardCheck}
             tone="amber"
-            title="Assessment submitted"
-            body="Thanks — your technical assessment is being reviewed. If you pass, we'll invite you to the interview stage."
+            title="Assessment received"
+            body="Your answers are safely submitted and the review team can see them. We'll email you with the result and unlock interview scheduling if you pass."
           />
         ) : null}
 
-        {stage === "interview" ? (
-          <InterviewStep />
-        ) : null}
-
-        {stage === "interview_review" ? (
-          <StatusScreen
-            icon={Video}
-            tone="amber"
-            title="Interview in progress"
-            body="Your interview stage is being finalised by our team. We'll let you know the outcome shortly."
+        {stage === "interview" || stage === "interview_review" ? (
+          <InterviewScheduler
+            role="talent"
+            talentId={initial.id}
+            data={interview}
+            googleCalendarUrl={googleCalendarUrl}
           />
         ) : null}
 
@@ -116,7 +155,7 @@ function TalentPipeline({
             icon={Trophy}
             tone="teal"
             title="Welcome to the network!"
-            body="You've been certified and promoted to the talent dashboard."
+            body="You've completed certification. Your experience and onboarding profile are ready in the talent dashboard."
             action={{ href: "/dashboard/talent", label: "Go to your dashboard" }}
           />
         ) : null}
@@ -128,7 +167,7 @@ function TalentPipeline({
             title="Application not successful this time"
             body={
               initial.admin_notes ??
-              "Thank you for applying. Unfortunately we're not moving forward right now. You're welcome to apply again in the future."
+              "Thank you for your time. Unfortunately we're not moving forward right now, but you're welcome to apply again in the future."
             }
           />
         ) : null}
@@ -186,7 +225,7 @@ function StatusScreen({
   tone,
   action,
 }: {
-  icon: typeof Clock;
+  icon: typeof Clock | typeof Video;
   title: string;
   body: string;
   tone: "amber" | "teal";
@@ -204,7 +243,9 @@ function StatusScreen({
         <Icon className="size-7" />
       </div>
       <h1 className="font-display text-2xl font-bold text-navy">{title}</h1>
-      <p className="mx-auto mt-3 max-w-md text-sm text-muted-foreground">{body}</p>
+      <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
+        {body}
+      </p>
       {action ? (
         <Link
           href={action.href}
@@ -217,175 +258,6 @@ function StatusScreen({
           You can safely close this page — your progress is saved.
         </p>
       )}
-    </div>
-  );
-}
-
-function AssessmentStep({
-  initial,
-  firstName,
-}: {
-  initial: TalentOnboarding;
-  firstName: string | null;
-}) {
-  const [answers, setAnswers] = useState({
-    problem_solving: initial.assessment?.problem_solving ?? "",
-    technical_build: initial.assessment?.technical_build ?? "",
-    agri_context: initial.assessment?.agri_context ?? "",
-  });
-  const [pending, startTransition] = useTransition();
-  const [error, setError] = useState("");
-
-  const ready =
-    answers.problem_solving.trim().length > 0 &&
-    answers.technical_build.trim().length > 0 &&
-    answers.agri_context.trim().length > 0;
-
-  const submit = () => {
-    setError("");
-    startTransition(async () => {
-      try {
-        await submitTalentAssessment(answers);
-        window.location.reload();
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Could not submit assessment.");
-      }
-    });
-  };
-
-  return (
-    <div>
-      <div className="mb-6 flex items-start gap-3">
-        <div className="flex size-11 items-center justify-center rounded-full bg-accent-teal/15 text-accent-teal">
-          <CheckCircle2 className="size-6" />
-        </div>
-        <div>
-          <h1 className="font-display text-xl font-bold text-navy">
-            You&apos;re approved{firstName ? `, ${firstName}` : ""} — technical assessment
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            This adapts to how you think and build. Answer in your own words.
-          </p>
-        </div>
-      </div>
-
-      {error ? (
-        <div className="mb-5 rounded-xl border border-accent-amber/20 bg-accent-amber/10 p-3 text-center text-xs font-medium text-accent-amber">
-          {error}
-        </div>
-      ) : null}
-
-      <div className="space-y-5">
-        <TextAreaField
-          id="q1"
-          label="1. Walk us through how you'd debug a system that's silently dropping 20% of records."
-          value={answers.problem_solving}
-          onChange={(v) => setAnswers((a) => ({ ...a, problem_solving: v }))}
-          rows={4}
-        />
-        <TextAreaField
-          id="q2"
-          label="2. Describe a technically hard system you built and the key decisions you made."
-          value={answers.technical_build}
-          onChange={(v) => setAnswers((a) => ({ ...a, technical_build: v }))}
-          rows={4}
-        />
-        <TextAreaField
-          id="q3"
-          label="3. How would you design data capture for smallholder farms with patchy connectivity?"
-          value={answers.agri_context}
-          onChange={(v) => setAnswers((a) => ({ ...a, agri_context: v }))}
-          rows={4}
-        />
-      </div>
-
-      <StepNav
-        showBack={false}
-        onNext={submit}
-        nextLabel="Submit assessment"
-        nextDisabled={!ready}
-        loading={pending}
-      />
-    </div>
-  );
-}
-
-function InterviewStep() {
-  const [pending, startTransition] = useTransition();
-  const [error, setError] = useState("");
-
-  const confirm = () => {
-    setError("");
-    startTransition(async () => {
-      try {
-        await confirmTalentInterview();
-        window.location.reload();
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Could not confirm.");
-      }
-    });
-  };
-
-  return (
-    <div className="py-2 text-center">
-      <div className="mx-auto mb-5 flex size-14 items-center justify-center rounded-full bg-accent-teal/15 text-accent-teal">
-        <Video className="size-7" />
-      </div>
-      <h1 className="font-display text-2xl font-bold text-navy">
-        You passed the assessment
-      </h1>
-      <p className="mx-auto mt-3 max-w-md text-sm text-muted-foreground">
-        The final step is an interview with our team. Confirm below and we&apos;ll
-        coordinate a time. Once you confirm, your interview moves to final review.
-      </p>
-      {error ? (
-        <div className="mx-auto mt-5 max-w-sm rounded-xl border border-accent-amber/20 bg-accent-amber/10 p-3 text-xs font-medium text-accent-amber">
-          {error}
-        </div>
-      ) : null}
-      <button
-        type="button"
-        onClick={confirm}
-        disabled={pending}
-        className="mt-7 inline-flex min-h-11 items-center justify-center rounded-full bg-navy-mid px-7 text-sm font-semibold text-white shadow-glow transition hover:bg-navy disabled:opacity-50"
-      >
-        {pending ? "Confirming…" : "Confirm interview availability"}
-      </button>
-    </div>
-  );
-}
-
-function TextAreaField({
-  id,
-  label,
-  value,
-  onChange,
-  placeholder,
-  rows = 4,
-}: {
-  id: string;
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-  rows?: number;
-}) {
-  return (
-    <div className="space-y-1.5">
-      <label
-        htmlFor={id}
-        className="font-display text-xs font-bold uppercase tracking-wide text-navy-mid/80"
-      >
-        {label}
-      </label>
-      <textarea
-        id={id}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        rows={rows}
-        className="w-full rounded-xl border border-border-strong bg-white/50 px-4 py-3 text-sm text-navy placeholder-muted-foreground/50 transition focus:border-blue-vivid focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-vivid/10"
-      />
     </div>
   );
 }

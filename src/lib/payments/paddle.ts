@@ -3,10 +3,21 @@ import "server-only";
 import {
   Environment,
   Paddle,
+  type CurrencyCode,
   type EventEntity,
   type TaxCategory,
   type Transaction,
 } from "@paddle/paddle-node-sdk";
+
+import {
+  BASE_CURRENCY,
+  checkoutCurrencyFor,
+  majorToMinor,
+  minorToMajor,
+  normalizeCountryCode,
+  normalizeCurrencyCode,
+  type PaddlePaymentCurrency,
+} from "@/lib/currency/config";
 
 let paddleClient: Paddle | null = null;
 
@@ -62,26 +73,141 @@ export function getPaddle(): Paddle {
   return paddleClient;
 }
 
+export interface PaddleCheckoutQuote {
+  baseAmount: number;
+  baseCurrency: typeof BASE_CURRENCY;
+  presentmentAmountMinor: number;
+  presentmentCurrency: PaddlePaymentCurrency;
+  requestedCurrency: string;
+  countryCode: string | null;
+  fxRate: number;
+  fxSource: "identity" | "paddle_preview";
+  quotedAt: string;
+}
+
+export interface LocalizedPaddleTransaction {
+  transaction: Transaction;
+  quote: PaddleCheckoutQuote;
+}
+
+async function quotePaddleCheckout({
+  amountZar,
+  preferredCurrency,
+  countryCode,
+}: {
+  amountZar: number;
+  preferredCurrency?: string | null;
+  countryCode?: string | null;
+}): Promise<PaddleCheckoutQuote> {
+  const baseAmount = Number(amountZar);
+  if (!Number.isFinite(baseAmount) || baseAmount <= 0) {
+    throw new Error("Checkout amount must be greater than zero");
+  }
+
+  const requestedCurrency = normalizeCurrencyCode(preferredCurrency);
+  const presentmentCurrency = checkoutCurrencyFor(requestedCurrency);
+  const normalizedCountry = normalizeCountryCode(countryCode);
+  const quotedAt = new Date().toISOString();
+
+  if (presentmentCurrency === BASE_CURRENCY) {
+    return {
+      baseAmount,
+      baseCurrency: BASE_CURRENCY,
+      presentmentAmountMinor: majorToMinor(baseAmount, BASE_CURRENCY),
+      presentmentCurrency,
+      requestedCurrency,
+      countryCode: normalizedCountry,
+      fxRate: 1,
+      fxSource: "identity",
+      quotedAt,
+    };
+  }
+
+  const preview = await getPaddle().transactions.preview({
+    currencyCode: presentmentCurrency as CurrencyCode,
+    ...(normalizedCountry
+      ? { address: { countryCode: normalizedCountry as never } }
+      : {}),
+    items: [
+      {
+        quantity: 1,
+        price: {
+          name: "Somahorse.ai project currency quote",
+          description: "Localized preview of a project amount",
+          unitPrice: {
+            amount: String(majorToMinor(baseAmount, BASE_CURRENCY)),
+            currencyCode: BASE_CURRENCY,
+          },
+          // An external-tax preview gives us the converted list price without
+          // folding estimated tax into the immutable checkout FX snapshot.
+          taxMode: "external",
+          product: {
+            name: "Somahorse.ai project",
+            description: "Localized project payment preview.",
+            taxCategory: paddleTaxCategory(),
+          },
+        },
+      },
+    ],
+  });
+  const amountMinor = Number(
+    preview.details.lineItems[0]?.unitTotals.subtotal
+  );
+  if (!Number.isSafeInteger(amountMinor) || amountMinor <= 0) {
+    throw new Error("Paddle did not return a valid localized checkout amount");
+  }
+
+  return {
+    baseAmount,
+    baseCurrency: BASE_CURRENCY,
+    presentmentAmountMinor: amountMinor,
+    presentmentCurrency,
+    requestedCurrency,
+    countryCode: normalizedCountry,
+    fxRate:
+      minorToMajor(amountMinor, presentmentCurrency) / baseAmount,
+    fxSource: "paddle_preview",
+    quotedAt,
+  };
+}
+
 export async function createDepositTransaction({
   projectId,
   conversationId,
   clientId,
   title,
   depositZar,
+  preferredCurrency,
+  countryCode,
 }: {
   projectId: string;
   conversationId: string;
   clientId: string;
   title: string;
   depositZar: number;
-}): Promise<Transaction> {
-  return getPaddle().transactions.create({
-    currencyCode: "ZAR",
+  preferredCurrency?: string | null;
+  countryCode?: string | null;
+}): Promise<LocalizedPaddleTransaction> {
+  const quote = await quotePaddleCheckout({
+    amountZar: depositZar,
+    preferredCurrency,
+    countryCode,
+  });
+  const transaction = await getPaddle().transactions.create({
+    currencyCode: quote.presentmentCurrency,
     customData: {
       project_id: projectId,
       conversation_id: conversationId,
       client_id: clientId,
       payment_kind: "deposit",
+      base_amount: quote.baseAmount,
+      base_currency: quote.baseCurrency,
+      presentment_amount_minor: quote.presentmentAmountMinor,
+      presentment_currency: quote.presentmentCurrency,
+      requested_currency: quote.requestedCurrency,
+      fx_rate: quote.fxRate,
+      fx_source: quote.fxSource,
+      fx_quoted_at: quote.quotedAt,
     },
     items: [
       {
@@ -90,8 +216,8 @@ export async function createDepositTransaction({
           name: "Project start deposit",
           description: `Somahorse.ai project deposit: ${title}`.slice(0, 500),
           unitPrice: {
-            amount: String(Math.round(depositZar * 100)),
-            currencyCode: "ZAR",
+            amount: String(quote.presentmentAmountMinor),
+            currencyCode: quote.presentmentCurrency,
           },
           taxMode: "account_setting",
           product: {
@@ -103,6 +229,7 @@ export async function createDepositTransaction({
       },
     ],
   });
+  return { transaction, quote };
 }
 
 export async function createWorkspacePaymentTransaction({
@@ -115,6 +242,8 @@ export async function createWorkspacePaymentTransaction({
   kind,
   milestoneId,
   periodKey,
+  preferredCurrency,
+  countryCode,
 }: {
   paymentId: string;
   projectId: string;
@@ -125,15 +254,22 @@ export async function createWorkspacePaymentTransaction({
   kind: "build_stage" | "delivery" | "monthly";
   milestoneId?: string | null;
   periodKey?: string | null;
-}): Promise<Transaction> {
+  preferredCurrency?: string | null;
+  countryCode?: string | null;
+}): Promise<LocalizedPaddleTransaction> {
   if (!Number.isFinite(amountZar) || amountZar <= 0) {
     throw new Error("Workspace payment amount must be greater than zero");
   }
   const itemName =
     kind === "monthly" ? "Monthly project support" : kind === "delivery" ? "Project delivery payment" : "Project milestone payment";
+  const quote = await quotePaddleCheckout({
+    amountZar,
+    preferredCurrency,
+    countryCode,
+  });
 
-  return getPaddle().transactions.create({
-    currencyCode: "ZAR",
+  const transaction = await getPaddle().transactions.create({
+    currencyCode: quote.presentmentCurrency,
     customData: {
       project_id: projectId,
       client_id: clientId,
@@ -141,6 +277,14 @@ export async function createWorkspacePaymentTransaction({
       payment_kind: kind,
       ...(milestoneId ? { milestone_id: milestoneId } : {}),
       ...(periodKey ? { period_key: periodKey } : {}),
+      base_amount: quote.baseAmount,
+      base_currency: quote.baseCurrency,
+      presentment_amount_minor: quote.presentmentAmountMinor,
+      presentment_currency: quote.presentmentCurrency,
+      requested_currency: quote.requestedCurrency,
+      fx_rate: quote.fxRate,
+      fx_source: quote.fxSource,
+      fx_quoted_at: quote.quotedAt,
     },
     items: [
       {
@@ -149,8 +293,8 @@ export async function createWorkspacePaymentTransaction({
           name: itemName,
           description: description.slice(0, 500),
           unitPrice: {
-            amount: String(Math.round(amountZar * 100)),
-            currencyCode: "ZAR",
+            amount: String(quote.presentmentAmountMinor),
+            currencyCode: quote.presentmentCurrency,
           },
           taxMode: "account_setting",
           product: {
@@ -162,6 +306,7 @@ export async function createWorkspacePaymentTransaction({
       },
     ],
   });
+  return { transaction, quote };
 }
 
 export function getPaddleTransaction(transactionId: string): Promise<Transaction> {

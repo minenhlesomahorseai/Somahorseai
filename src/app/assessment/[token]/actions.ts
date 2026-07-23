@@ -5,6 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { gradeAssessment, type CandidateProfile } from "@/lib/ai/assessment";
 import type { AssessmentAnswers, AssessmentRecord } from "@/lib/auth/types";
 import { fetchAssessmentByToken } from "@/lib/assessment/data";
+import { sendAssessmentReceived } from "@/lib/email";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -111,11 +112,17 @@ export async function submitAssessment(
   }
 
   // Move the applicant into admin review (allowed self-transition).
-  await authed
+  const { error: stageError } = await authed
     .from("talent_onboarding")
     .update({ stage: "assessment_review" })
     .eq("id", userId)
     .eq("stage", "assessment");
+  if (stageError) throw new Error(stageError.message);
+
+  await sendAssessmentReceipt(authed, {
+    talentId: userId,
+    assessmentId: assessment.id,
+  });
 
   return { status: graded ? "graded" : "submitted" };
 }
@@ -143,11 +150,35 @@ export async function disqualifyAssessment(input: {
     .eq("id", assessment.id);
   if (error) throw new Error(error.message);
 
-  await authed
+  const { error: stageError } = await authed
     .from("talent_onboarding")
     .update({ stage: "assessment_review" })
     .eq("id", userId)
     .eq("stage", "assessment");
+  if (stageError) throw new Error(stageError.message);
+
+  await sendAssessmentReceipt(authed, {
+    talentId: userId,
+    assessmentId: assessment.id,
+  });
+}
+
+async function sendAssessmentReceipt(
+  supabase: SupabaseClient,
+  opts: { talentId: string; assessmentId: string }
+): Promise<void> {
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("full_name, email")
+    .eq("id", opts.talentId)
+    .maybeSingle();
+  const fullName = (profile?.full_name as string | null) ?? null;
+  await sendAssessmentReceived({
+    to: (profile?.email as string | null) ?? null,
+    firstName: fullName?.trim().split(/\s+/)[0] ?? null,
+    talentId: opts.talentId,
+    assessmentId: opts.assessmentId,
+  });
 }
 
 async function loadCandidateProfile(

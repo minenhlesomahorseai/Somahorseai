@@ -22,8 +22,16 @@ export async function ensureWelcomeEmail(opts: {
 
   const result =
     opts.role === "client"
-      ? await sendClientWelcome({ to: opts.email, firstName: opts.firstName })
-      : await sendTalentWelcome({ to: opts.email, firstName: opts.firstName });
+      ? await sendClientWelcome({
+          to: opts.email,
+          firstName: opts.firstName,
+          userId: opts.userId,
+        })
+      : await sendTalentWelcome({
+          to: opts.email,
+          firstName: opts.firstName,
+          userId: opts.userId,
+        });
 
   if (result.sent) {
     await opts.supabase

@@ -12,6 +12,8 @@ export interface TalentSession {
   userId: string;
   user: DashboardUser;
   talent: TalentOnboarding;
+  preferredCurrency: string;
+  countryCode: string | null;
 }
 
 export interface TalentProject {
@@ -95,6 +97,8 @@ export const loadTalentSession = cache(async (): Promise<TalentSession> => {
       initials: buildInitials(profile.full_name, email),
     },
     talent,
+    preferredCurrency: profile.preferred_currency,
+    countryCode: profile.country_code,
   };
 });
 

@@ -1,10 +1,12 @@
-import { Bell, LockKeyhole, Mail, ShieldCheck, Smartphone, UserRound } from "lucide-react";
+import { Bell, Globe2, LockKeyhole, Mail, ShieldCheck, Smartphone, UserRound } from "lucide-react";
 
+import { CurrencyPreferenceForm } from "@/components/dashboard/currency-preference-form";
 import { PreviewPill, TalentGlassCard, TalentPageHeader, TalentSectionTitle } from "@/components/dashboard/talent-ui";
+import { currencyOptions } from "@/lib/currency/config";
 import { loadTalentSession } from "@/lib/dashboard/talent";
 
 export default async function TalentSettingsPage() {
-  const { user } = await loadTalentSession();
+  const { user, preferredCurrency } = await loadTalentSession();
 
   return (
     <div className="space-y-6">
@@ -31,6 +33,15 @@ export default async function TalentSettingsPage() {
             <PreferenceRow icon={LockKeyhole} title="Password and sign-in" detail="Protected by your current authentication method" />
             <PreferenceRow icon={Smartphone} title="Two-step verification" detail="Additional account protection coming soon" />
           </div>
+        </TalentGlassCard>
+
+        <TalentGlassCard className="lg:col-span-12">
+          <TalentSectionTitle title="Currency and payouts" icon={Globe2} />
+          <CurrencyPreferenceForm
+            currentCurrency={preferredCurrency}
+            options={currencyOptions()}
+            description="We use this preference to show your payout equivalent. The original ZAR allocation and the exchange-rate snapshot are kept permanently, so historical earnings never change when rates move."
+          />
         </TalentGlassCard>
 
         <TalentGlassCard className="lg:col-span-12">

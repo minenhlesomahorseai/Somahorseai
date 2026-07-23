@@ -19,6 +19,9 @@ import { FloatingNav } from "@/components/home/floating-nav";
 import { Footer } from "@/components/home/footer";
 import { Reveal } from "@/components/home/reveal";
 import { getMarketingUser } from "@/lib/auth/marketing";
+import { BASE_CURRENCY } from "@/lib/currency/config";
+import { getVisitorCurrencyContext } from "@/lib/currency/context";
+import { tryQuoteFx } from "@/lib/currency/fx";
 
 export const metadata: Metadata = {
   title: "About Us — Somahorse.ai",
@@ -71,11 +74,23 @@ const TEAM = [
 const PLATFORM_FACTS = [
   { value: "60%", label: "of verified payments allocated to the project talent pool" },
   { value: "One", label: "shared workspace for progress, people, messages, and money" },
-  { value: "ZAR", label: "project quotes shaped around the agreed scope" },
 ] as const;
 
 export default async function AboutPage() {
-  const user = await getMarketingUser();
+  const [user, visitor] = await Promise.all([
+    getMarketingUser(),
+    getVisitorCurrencyContext(),
+  ]);
+  const requestedCurrency = user?.preferredCurrency ?? visitor.currency;
+  const fx = await tryQuoteFx(1, BASE_CURRENCY, requestedCurrency);
+  const displayCurrency = fx ? requestedCurrency : BASE_CURRENCY;
+  const platformFacts = [
+    ...PLATFORM_FACTS,
+    {
+      value: displayCurrency,
+      label: "localized project quotes shaped around the agreed scope",
+    },
+  ];
   const clientHref = user?.startProjectPath ?? user?.dashboardPath ?? "/signup?role=client";
   const talentHref = user?.role === "talent" ? user.dashboardPath : "/signup?role=developer";
 
@@ -146,7 +161,7 @@ export default async function AboutPage() {
 
         <section className="border-y border-border/70 bg-white/75 px-4 py-6 backdrop-blur-2xl sm:px-6 lg:px-8">
           <div className="mx-auto grid max-w-7xl gap-6 sm:grid-cols-3 sm:divide-x sm:divide-border/80">
-            {PLATFORM_FACTS.map((fact) => (
+            {platformFacts.map((fact) => (
               <div key={fact.value} className="grid grid-cols-[3.75rem_1fr] items-center gap-4 sm:block sm:px-6 sm:text-center first:sm:pl-0 last:sm:pr-0">
                 <p className="font-display text-3xl font-bold text-gradient sm:text-4xl">{fact.value}</p>
                 <p className="text-xs leading-5 text-muted-foreground sm:mx-auto sm:mt-2 sm:max-w-[15rem]">{fact.label}</p>

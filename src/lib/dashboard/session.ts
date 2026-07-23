@@ -41,6 +41,8 @@ export async function getClientContextForApi(): Promise<ClientContext | null> {
     problem: onboarding?.problem ?? null,
     timeline: onboarding?.timeline ?? null,
     budgetRange: onboarding?.budget_range ?? null,
+    preferredCurrency: profile.preferred_currency,
+    countryCode: profile.country_code,
   };
 }
 
@@ -87,6 +89,8 @@ export async function loadClientSession(): Promise<ClientSession> {
       problem: onboarding?.problem ?? null,
       timeline: onboarding?.timeline ?? null,
       budgetRange: onboarding?.budget_range ?? null,
+      preferredCurrency: profile.preferred_currency,
+      countryCode: profile.country_code,
     },
   };
 }

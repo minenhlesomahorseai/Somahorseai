@@ -1,4 +1,8 @@
 import type { Metadata } from "next";
+
+import { currencyOptions } from "@/lib/currency/config";
+import { getVisitorCurrencyContext } from "@/lib/currency/context";
+
 import { RoleSelect } from "./role-select";
 import { SignupForm } from "./signup-form";
 
@@ -17,5 +21,13 @@ export default async function SignupPage(props: PageProps) {
   if (role !== "client" && role !== "developer") {
     return <RoleSelect />;
   }
-  return <SignupForm initialRole={role} />;
+  const visitor = await getVisitorCurrencyContext();
+  return (
+    <SignupForm
+      initialRole={role}
+      initialCurrency={visitor.currency}
+      initialCountryCode={visitor.countryCode}
+      currencies={currencyOptions()}
+    />
+  );
 }

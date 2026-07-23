@@ -1,10 +1,17 @@
 import "server-only";
 
 import {
+  sendProjectEarningsTalent,
   sendProjectAssignmentTalent,
   sendProjectFundedAdmin,
+  sendProjectPaymentAdmin,
+  sendProjectPaymentClient,
   sendProjectStartedClient,
 } from "@/lib/email";
+import {
+  formatMinorMoney,
+  formatMoney,
+} from "@/lib/currency/config";
 import { formatZar } from "@/lib/projects/pricing";
 import { ensureProjectWorkspace } from "@/lib/ai/workspace";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -103,8 +110,15 @@ export async function activateCompletedTransaction({
     } catch (error) {
       console.error("Project activated but workspace provisioning needs a retry", error);
     }
-    await sendActivationEmails(admin, activation.activated_project_id, activation.project_status);
   }
+  // Dispatch on every reconciliation. Stable email dedupe keys make this safe,
+  // and a repeated webhook repairs an outbox row that was never created if the
+  // first request stopped after the payment transaction committed.
+  await sendActivationEmails(
+    admin,
+    activation.activated_project_id,
+    activation.project_status
+  );
   return activation;
 }
 
@@ -152,6 +166,7 @@ export async function reconcileCompletedTransaction(args: {
     },
   });
   if (error || !data?.[0]) throw new Error(error?.message ?? "Workspace payment could not be recorded");
+  await sendWorkspacePaymentEmails(admin, payment.id);
   return { kind: "workspace", projectId: payment.project_id, paymentId: payment.id };
 }
 
@@ -173,8 +188,9 @@ async function sendActivationEmails(
       admin.from("client_onboarding").select("company_name").eq("id", project.client_id).maybeSingle(),
       admin
         .from("payments")
-        .select("invoice_number")
+        .select("id, invoice_number, presentment_amount_minor, presentment_currency")
         .eq("project_id", projectId)
+        .eq("kind", "deposit")
         .eq("status", "paid")
         .order("paid_at", { ascending: false })
         .limit(1)
@@ -186,14 +202,41 @@ async function sendActivationEmails(
         .eq("status", "assigned"),
     ]);
 
-  const talentIds = (assignments ?? []).map((assignment) => assignment.talent_id);
+  const { data: earnings } = payment?.id
+    ? await admin
+        .from("talent_earnings")
+        .select("talent_id, amount_owed")
+        .eq("payment_id", payment.id)
+    : {
+        data: [] as Array<{ talent_id: string; amount_owed: number }>,
+      };
+  const talentIds = [
+    ...new Set([
+      ...(assignments ?? []).map((assignment) => assignment.talent_id),
+      ...(earnings ?? []).map((earning) => earning.talent_id),
+    ]),
+  ];
   const { data: talentProfiles } = talentIds.length
-    ? await admin.from("profiles").select("id, full_name, email").in("id", talentIds)
-    : { data: [] as { id: string; full_name: string | null; email: string | null }[] };
+    ? await admin
+        .from("profiles")
+        .select("id, full_name, email, preferred_currency")
+        .in("id", talentIds)
+    : {
+        data: [] as Array<{
+          id: string;
+          full_name: string | null;
+          email: string | null;
+          preferred_currency: string;
+        }>,
+      };
   const profileById = new Map((talentProfiles ?? []).map((profile) => [profile.id, profile]));
 
   const { data: admins } = await admin.from("admins").select("email");
-  const depositZar = formatZar(Number(project.deposit_amount ?? 0));
+  const depositZar =
+    formatMinorMoney(
+      payment?.presentment_amount_minor,
+      payment?.presentment_currency
+    ) ?? formatZar(Number(project.deposit_amount ?? 0));
   const teamSummary = (assignments ?? [])
     .map((assignment) => {
       const profile = profileById.get(assignment.talent_id);
@@ -208,14 +251,33 @@ async function sendActivationEmails(
       projectId,
       projectTitle: project.title,
       depositZar,
+      clientId: project.client_id,
     }),
     ...(assignments ?? []).map((assignment) => {
       const profile = profileById.get(assignment.talent_id);
       return sendProjectAssignmentTalent({
         to: profile?.email ?? null,
         firstName: firstName(profile?.full_name ?? null),
+        projectId,
+        talentId: assignment.talent_id,
         projectTitle: project.title,
         role: assignment.role,
+      });
+    }),
+    ...(earnings ?? []).map((earning) => {
+      const profile = profileById.get(earning.talent_id);
+      return sendProjectEarningsTalent({
+        to: profile?.email ?? null,
+        firstName: firstName(profile?.full_name ?? null),
+        talentId: earning.talent_id,
+        projectId,
+        paymentId: payment!.id,
+        projectTitle: project.title,
+        paymentLabel: "project deposit",
+        allocationAmount: formatMoney(Number(earning.amount_owed), "ZAR", {
+          maximumFractionDigits: 0,
+        }),
+        preferredCurrency: profile?.preferred_currency ?? "ZAR",
       });
     }),
     ...(admins ?? []).map((adminContact) =>
@@ -231,4 +293,110 @@ async function sendActivationEmails(
       })
     ),
   ]);
+}
+
+async function sendWorkspacePaymentEmails(
+  admin: NonNullable<ReturnType<typeof createAdminClient>>,
+  paymentId: string
+) {
+  const { data: payment } = await admin
+    .from("payments")
+    .select(
+      "id, project_id, client_id, kind, amount, currency, presentment_amount_minor, presentment_currency, invoice_number"
+    )
+    .eq("id", paymentId)
+    .maybeSingle();
+  if (!payment) return;
+
+  const [
+    { data: project },
+    { data: client },
+    { data: earnings },
+    { data: admins },
+  ] = await Promise.all([
+    admin.from("projects").select("title").eq("id", payment.project_id).maybeSingle(),
+    admin.from("profiles").select("full_name, email").eq("id", payment.client_id).maybeSingle(),
+    admin
+      .from("talent_earnings")
+      .select("talent_id, amount_owed")
+      .eq("payment_id", payment.id),
+    admin.from("admins").select("email"),
+  ]);
+  if (!project) return;
+
+  const talentIds = (earnings ?? []).map((earning) => earning.talent_id);
+  const { data: talentProfiles } = talentIds.length
+    ? await admin
+        .from("profiles")
+        .select("id, full_name, email, preferred_currency")
+        .in("id", talentIds)
+    : {
+        data: [] as Array<{
+          id: string;
+          full_name: string | null;
+          email: string | null;
+          preferred_currency: string;
+        }>,
+      };
+  const profileById = new Map(
+    (talentProfiles ?? []).map((profile) => [profile.id, profile])
+  );
+  const paymentLabel = workspacePaymentLabel(payment.kind);
+  const paidAmount =
+    formatMinorMoney(
+      payment.presentment_amount_minor,
+      payment.presentment_currency
+    ) ?? formatMoney(Number(payment.amount), payment.currency);
+  const baseAmount = formatMoney(Number(payment.amount), payment.currency, {
+    maximumFractionDigits: 0,
+  });
+
+  await Promise.all([
+    sendProjectPaymentClient({
+      to: client?.email ?? null,
+      firstName: firstName(client?.full_name ?? null),
+      clientId: payment.client_id,
+      projectId: payment.project_id,
+      paymentId: payment.id,
+      projectTitle: project.title,
+      paymentLabel,
+      paidAmount,
+      baseAmount,
+      invoiceNumber: payment.invoice_number,
+    }),
+    ...(earnings ?? []).map((earning) => {
+      const profile = profileById.get(earning.talent_id);
+      return sendProjectEarningsTalent({
+        to: profile?.email ?? null,
+        firstName: firstName(profile?.full_name ?? null),
+        talentId: earning.talent_id,
+        projectId: payment.project_id,
+        paymentId: payment.id,
+        projectTitle: project.title,
+        paymentLabel,
+        allocationAmount: formatMoney(Number(earning.amount_owed), "ZAR", {
+          maximumFractionDigits: 0,
+        }),
+        preferredCurrency: profile?.preferred_currency ?? "ZAR",
+      });
+    }),
+    ...(admins ?? []).map((adminContact) =>
+      sendProjectPaymentAdmin({
+        to: adminContact.email,
+        projectId: payment.project_id,
+        paymentId: payment.id,
+        projectTitle: project.title,
+        paymentLabel,
+        paidAmount,
+        baseAmount,
+        invoiceNumber: payment.invoice_number,
+      })
+    ),
+  ]);
+}
+
+function workspacePaymentLabel(kind: string): string {
+  if (kind === "monthly") return "monthly support payment";
+  if (kind === "delivery") return "delivery payment";
+  return "milestone payment";
 }

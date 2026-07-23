@@ -29,6 +29,7 @@ import {
 
 import type { ClientContext } from "@/lib/dashboard/types";
 import { formatZar } from "@/lib/projects/pricing";
+import { formatMoney } from "@/lib/currency/config";
 import type {
   IntakeConversation,
   ProjectProposal,
@@ -73,6 +74,8 @@ export function ProjectIntakeChat({
   initialConversation,
   initialConversations,
   initialMessages,
+  displayCurrency,
+  displayRate,
 }: {
   context: ClientContext;
   aiReady: boolean;
@@ -80,6 +83,8 @@ export function ProjectIntakeChat({
   initialConversation: IntakeConversation | null;
   initialConversations: IntakeConversation[];
   initialMessages: IntakeMessage[];
+  displayCurrency: string;
+  displayRate: number;
 }) {
   const router = useRouter();
   const [messages, setMessages] = useState<IntakeMessage[]>(initialMessages);
@@ -109,6 +114,12 @@ export function ProjectIntakeChat({
   const scrollRef = useRef<HTMLDivElement>(null);
   const startedRef = useRef(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const displayMoney = (amountZar: number) =>
+    displayCurrency === "ZAR"
+      ? formatZar(amountZar)
+      : formatMoney(amountZar * displayRate, displayCurrency, {
+          maximumFractionDigits: 0,
+        });
 
   const scrollToBottom = useCallback(() => {
     requestAnimationFrame(() => {
@@ -506,7 +517,7 @@ export function ProjectIntakeChat({
                   <CalendarDays className="size-3.5" /> {proposal.timelineWeeks} weeks
                 </span>
                 <span className="inline-flex items-center gap-1.5">
-                  <Wallet className="size-3.5" /> {formatZar(proposal.buildFeeZar)} build
+                  <Wallet className="size-3.5" /> {displayMoney(proposal.buildFeeZar)} build
                 </span>
                 <span className="ml-auto text-blue-vivid">Open proposal →</span>
               </div>
@@ -595,6 +606,7 @@ export function ProjectIntakeChat({
             startError={startError}
             projectPrepared={conversation?.stage === "checkout"}
             projectStarted={conversation?.stage === "converted"}
+            displayMoney={displayMoney}
             onClose={() => setPanelOpen(false)}
             onRetryMatch={() => conversation && void fetchTeam(conversation.id)}
             onStart={() => void handleStartProject()}
@@ -615,6 +627,7 @@ function ProposalPanel({
   startError,
   projectPrepared,
   projectStarted,
+  displayMoney,
   onClose,
   onRetryMatch,
   onStart,
@@ -628,6 +641,7 @@ function ProposalPanel({
   startError: string | null;
   projectPrepared: boolean;
   projectStarted: boolean;
+  displayMoney: (amountZar: number) => string;
   onClose: () => void;
   onRetryMatch: () => void;
   onStart: () => void;
@@ -772,10 +786,10 @@ function ProposalPanel({
             <section>
               <SectionLabel>Investment</SectionLabel>
               <div className="mt-3 grid grid-cols-2 gap-3">
-                <PriceCard icon={Wallet} label="Fixed build fee" value={formatZar(proposal.buildFeeZar)} />
+                <PriceCard icon={Wallet} label="Fixed build fee" value={displayMoney(proposal.buildFeeZar)} />
                 <PriceCard icon={CalendarDays} label="Delivery" value={`${proposal.timelineWeeks} weeks`} />
-                <PriceCard icon={CreditCard} label="Deposit today" value={formatZar(proposal.depositZar)} accent />
-                <PriceCard icon={ShieldCheck} label="Monthly after launch" value={formatZar(proposal.monthlyFeeZar)} suffix="/ month" />
+                <PriceCard icon={CreditCard} label="Deposit today" value={displayMoney(proposal.depositZar)} accent />
+                <PriceCard icon={ShieldCheck} label="Monthly after launch" value={displayMoney(proposal.monthlyFeeZar)} suffix="/ month" />
               </div>
               <div className="mt-3 rounded-2xl border border-border/70 bg-white/60 p-4 text-xs leading-relaxed text-muted-foreground">
                 The deposit starts delivery. The remaining build fee is staged across the build and launch. Monthly monitoring and support begin when the solution goes live.
@@ -816,7 +830,7 @@ function ProposalPanel({
                 ? "Project started"
                 : projectPrepared
                   ? "Continue to secure payment"
-                  : `Start project · Pay ${formatZar(proposal.depositZar)} deposit`}
+                  : `Start project · Pay ${displayMoney(proposal.depositZar)} deposit`}
           </button>
           <p className="mt-2 text-center text-[11px] text-muted-foreground">
             Secure payment by Paddle. Talent is alerted only after payment is verified.

@@ -13,12 +13,17 @@ import {
   Trophy,
   ExternalLink,
   FolderKanban,
+  Mail,
+  MailCheck,
+  MailWarning,
+  RefreshCw,
 } from "lucide-react";
 
 import type { Profile, TalentOnboarding, TalentStage } from "@/lib/auth/types";
+import type { EmailHealth } from "@/lib/email";
 import { optionLabel, TALENT_ROLES } from "@/lib/onboarding/options";
 
-import { setTalentStage } from "./actions";
+import { retryEmailDeliveries, setTalentStage } from "./actions";
 
 export interface TalentApplication {
   onboarding: TalentOnboarding;
@@ -28,8 +33,8 @@ export interface TalentApplication {
 const REVIEW_STAGES: {
   stage: TalentStage;
   label: string;
-  approveLabel: string;
-  approveTo: TalentStage;
+  approveLabel?: string;
+  approveTo?: TalentStage;
   icon: typeof Clock;
 }[] = [
   {
@@ -47,9 +52,14 @@ const REVIEW_STAGES: {
     icon: ClipboardCheck,
   },
   {
+    stage: "interview",
+    label: "Interview scheduling",
+    icon: Video,
+  },
+  {
     stage: "interview_review",
-    label: "Interview review",
-    approveLabel: "Approve → Promote",
+    label: "Interview outcome",
+    approveLabel: "Pass → Certify",
     approveTo: "approved",
     icon: Video,
   },
@@ -61,7 +71,7 @@ const STAGE_LABELS: Record<TalentStage, string> = {
   assessment: "Taking assessment",
   assessment_review: "Assessment review",
   interview: "Interview stage",
-  interview_review: "Interview review",
+  interview_review: "Interview confirmed",
   approved: "Approved",
   rejected: "Rejected",
 };
@@ -69,9 +79,13 @@ const STAGE_LABELS: Record<TalentStage, string> = {
 export function AdminConsole({
   applications,
   adminEmail,
+  emailHealth,
+  deliveryCounts,
 }: {
   applications: TalentApplication[];
   adminEmail: string;
+  emailHealth: EmailHealth;
+  deliveryCounts: { sent: number; pending: number; failed: number };
 }) {
   const counts = useMemo(() => {
     const map = new Map<string, number>();
@@ -117,6 +131,12 @@ export function AdminConsole({
             >
               <FolderKanban className="size-3.5" /> Projects
             </Link>
+            <Link
+              href="/admin/emails"
+              className="inline-flex items-center gap-1.5 rounded-full border border-navy-mid/20 bg-white px-3.5 py-2 text-xs font-semibold text-navy-mid shadow-soft transition hover:bg-blue-mist"
+            >
+              <Mail className="size-3.5" /> Email inbox
+            </Link>
             <span className="hidden items-center gap-2 rounded-full border border-navy-mid/20 bg-white/70 px-3.5 py-1.5 text-xs font-semibold text-navy-mid shadow-soft sm:inline-flex">
               <ShieldCheck className="size-3.5" />
               Admin · {adminEmail}
@@ -135,10 +155,15 @@ export function AdminConsole({
           </p>
         </div>
 
+        <EmailDeliveryStatus
+          health={emailHealth}
+          counts={deliveryCounts}
+        />
+
         <div className="mb-10 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <StatCard label="Awaiting review" value={counts.get("pending_review") ?? 0} icon={Clock} />
           <StatCard label="Assessment review" value={counts.get("assessment_review") ?? 0} icon={ClipboardCheck} />
-          <StatCard label="Interview review" value={counts.get("interview_review") ?? 0} icon={Video} />
+          <StatCard label="Interviews" value={(counts.get("interview") ?? 0) + (counts.get("interview_review") ?? 0)} icon={Video} />
           <StatCard label="Approved" value={counts.get("approved") ?? 0} icon={Trophy} />
         </div>
 
@@ -166,7 +191,14 @@ export function AdminConsole({
                     reviewHref={
                       config.stage === "assessment_review"
                         ? `/admin/assessment/${app.onboarding.id}`
+                        : config.stage === "interview"
+                          ? `/admin/interviews/${app.onboarding.id}`
                         : undefined
+                    }
+                    reviewLabel={
+                      config.stage === "interview"
+                        ? "Open interview scheduling"
+                        : "Open assessment review"
                     }
                   />
                 ))}
@@ -203,6 +235,83 @@ export function AdminConsole({
   );
 }
 
+function EmailDeliveryStatus({
+  health,
+  counts,
+}: {
+  health: EmailHealth;
+  counts: { sent: number; pending: number; failed: number };
+}) {
+  const [pending, startTransition] = useTransition();
+  const [result, setResult] = useState("");
+  const retry = () => {
+    setResult("");
+    startTransition(async () => {
+      try {
+        const next = await retryEmailDeliveries();
+        setResult(
+          `Processed ${next.processed}: ${next.sent} sent, ${next.failed} still waiting.`
+        );
+      } catch (cause) {
+        setResult(cause instanceof Error ? cause.message : "Retry failed.");
+      }
+    });
+  };
+
+  return (
+    <div
+      className={`mb-8 rounded-2xl border p-5 ${
+        health.configured
+          ? "border-accent-teal/25 bg-accent-teal/10"
+          : "border-accent-amber/25 bg-accent-amber/10"
+      }`}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex items-start gap-3">
+          <span
+            className={`flex size-10 shrink-0 items-center justify-center rounded-full ${
+              health.configured
+                ? "bg-accent-teal text-white"
+                : "bg-accent-amber text-white"
+            }`}
+          >
+            {health.configured ? (
+              <MailCheck className="size-5" />
+            ) : (
+              <MailWarning className="size-5" />
+            )}
+          </span>
+          <div>
+            <p className="font-display text-sm font-bold text-navy">
+              {health.configured
+                ? "Transactional email is active"
+                : "Email setup needs attention"}
+            </p>
+            <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground">
+              {health.message}
+            </p>
+            <p className="mt-2 text-[11px] font-semibold text-navy-mid/75">
+              {counts.sent} sent · {counts.pending} pending · {counts.failed} failed
+            </p>
+            {result ? (
+              <p className="mt-2 text-xs font-medium text-navy-mid">{result}</p>
+            ) : null}
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={retry}
+          disabled={pending}
+          className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-border-strong bg-white px-4 text-xs font-bold text-navy-mid transition hover:border-blue-vivid disabled:opacity-50"
+        >
+          <RefreshCw className={`size-3.5 ${pending ? "animate-spin" : ""}`} />
+          Retry queued emails
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function StatCard({
   label,
   value,
@@ -228,22 +337,38 @@ function ApplicationCard({
   approveLabel,
   approveTo,
   reviewHref,
+  reviewLabel,
 }: {
   app: TalentApplication;
-  approveLabel: string;
-  approveTo: TalentStage;
+  approveLabel?: string;
+  approveTo?: TalentStage;
   reviewHref?: string;
+  reviewLabel?: string;
 }) {
   const { onboarding, profile } = app;
   const [notes, setNotes] = useState(onboarding.admin_notes ?? "");
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
 
   const act = (nextStage: TalentStage) => {
     setError("");
+    setMessage("");
     startTransition(async () => {
       try {
-        await setTalentStage(onboarding.id, onboarding.stage, nextStage, notes || undefined);
+        const result = await setTalentStage(
+          onboarding.id,
+          onboarding.stage,
+          nextStage,
+          notes || undefined
+        );
+        setMessage(
+          result.email?.sent
+            ? "Stage updated and email accepted for delivery."
+            : result.email?.queued
+              ? "Stage updated. The email is queued and will retry automatically."
+              : "Stage updated."
+        );
       } catch (e) {
         setError(e instanceof Error ? e.message : "Action failed.");
       }
@@ -350,7 +475,7 @@ function ApplicationCard({
           className="mt-4 inline-flex min-h-10 items-center gap-1.5 rounded-full bg-navy-mid px-5 text-sm font-semibold text-white shadow-glow transition hover:bg-navy"
         >
           <ClipboardCheck className="size-4" />
-          Open assessment review
+          {reviewLabel ?? "Open review"}
         </Link>
       ) : null}
 
@@ -367,7 +492,11 @@ function ApplicationCard({
       {error ? (
         <p className="mt-2 text-xs font-medium text-accent-amber">{error}</p>
       ) : null}
+      {message ? (
+        <p className="mt-2 text-xs font-medium text-accent-teal">{message}</p>
+      ) : null}
 
+      {approveTo && approveLabel ? (
       <div className="mt-4 flex flex-wrap gap-2">
         <button
           type="button"
@@ -392,6 +521,7 @@ function ApplicationCard({
           Reject
         </button>
       </div>
+      ) : null}
       </>
       )}
     </div>

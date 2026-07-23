@@ -18,6 +18,7 @@ export function AssessmentDecision({
   const [mode, setMode] = useState<"idle" | "rejecting">("idle");
   const [error, setError] = useState("");
   const [done, setDone] = useState<"interview" | "rejected" | null>(null);
+  const [deliveryMessage, setDeliveryMessage] = useState("");
   const [pending, startTransition] = useTransition();
 
   const act = (nextStage: "interview" | "rejected") => {
@@ -29,7 +30,19 @@ export function AssessmentDecision({
     }
     startTransition(async () => {
       try {
-        await setTalentStage(talentId, "assessment_review", nextStage, notes || undefined);
+        const result = await setTalentStage(
+          talentId,
+          "assessment_review",
+          nextStage,
+          notes || undefined
+        );
+        setDeliveryMessage(
+          result.email?.sent
+            ? "The email was accepted for delivery."
+            : result.email?.queued
+              ? "The email is safely queued and will retry automatically."
+              : "The stage was updated."
+        );
         setDone(nextStage);
         router.refresh();
       } catch (e) {
@@ -44,9 +57,10 @@ export function AssessmentDecision({
         <CheckCircle2 className="mx-auto size-7 text-accent-teal" />
         <p className="mt-2 text-sm font-semibold text-navy">
           {done === "interview"
-            ? "Promoted to interview — a congratulations email has been sent."
-            : "Application rejected — a rejection email with your reason has been sent."}
+            ? "Promoted to interview scheduling."
+            : "Application rejected with the reason recorded."}
         </p>
+        <p className="mt-1 text-xs text-muted-foreground">{deliveryMessage}</p>
       </div>
     );
   }

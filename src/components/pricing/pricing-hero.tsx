@@ -13,7 +13,15 @@ const QUOTE_LINES = [
   { label: "After launch", value: "Monthly, when included" },
 ] as const;
 
-export function PricingHero({ ctaHref }: { ctaHref: string }) {
+export function PricingHero({
+  ctaHref,
+  currencyCode,
+  localized,
+}: {
+  ctaHref: string;
+  currencyCode: string;
+  localized: boolean;
+}) {
   return (
     <section className="relative isolate overflow-hidden px-3 pb-10 pt-3 sm:px-4 sm:pb-16">
       <div className="hero-field absolute inset-x-3 bottom-3 top-2 -z-10 overflow-hidden rounded-[28px] border border-border shadow-calm sm:inset-x-4 md:rounded-[40px]">
@@ -39,7 +47,7 @@ export function PricingHero({ ctaHref }: { ctaHref: string }) {
             transition={{ duration: 0.65, ease: EASE, delay: 0.16 }}
             className="mt-6 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg sm:leading-8"
           >
-            No generic software bundle. Describe the operational problem, review an AI-assisted scope, and receive a project quote in rand with the payment schedule shown before delivery begins.
+            No generic software bundle. Describe the operational problem, review an AI-assisted scope, and receive a project quote in {currencyCode} with the payment schedule shown before delivery begins.
           </motion.p>
 
           <motion.div
@@ -62,7 +70,11 @@ export function PricingHero({ ctaHref }: { ctaHref: string }) {
             transition={{ duration: 0.6, delay: 0.34 }}
             className="mt-8 flex flex-wrap gap-x-5 gap-y-2"
           >
-            {["ZAR project quotes", "Visible payment status", "Secure Paddle checkout"].map((item) => (
+            {[
+              localized ? `${currencyCode} regional estimates` : `${currencyCode} project quotes`,
+              "Visible payment status",
+              "Secure Paddle checkout",
+            ].map((item) => (
               <span key={item} className="inline-flex items-center gap-2 text-xs font-medium text-muted-foreground sm:text-sm">
                 <CheckCircle2 className="size-4 text-accent-teal" aria-hidden /> {item}
               </span>

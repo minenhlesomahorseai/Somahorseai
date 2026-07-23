@@ -13,7 +13,7 @@ const STEPS = [
   {
     n: "02",
     title: "We scope & build",
-    body: "Our AI scopes and prices it in ZAR, then a certified African engineering team builds the system you'll own.",
+    body: "Our AI scopes it against one stable accounting value and shows the equivalent in your currency, then a certified African engineering team builds the system you'll own.",
   },
   {
     n: "03",

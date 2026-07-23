@@ -3,17 +3,29 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, Eye, EyeOff, Lock, Mail, User, Check, Loader2, Cpu, ShieldCheck, Sprout } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, Lock, Mail, User, Check, Loader2, Cpu, ShieldCheck, Sprout, CircleDollarSign } from "lucide-react";
 
 import { getPostAuthRedirect, signupRoleToUserRole } from "@/lib/auth/redirect";
 import { fetchProfile } from "@/lib/auth/profile";
+import type { CurrencyOption } from "@/lib/currency/config";
 import { createClient } from "@/lib/supabase/client";
 
-export function SignupForm({ initialRole }: { initialRole?: string }) {
+export function SignupForm({
+  initialRole,
+  initialCurrency,
+  initialCountryCode,
+  currencies,
+}: {
+  initialRole?: string;
+  initialCurrency: string;
+  initialCountryCode: string | null;
+  currencies: CurrencyOption[];
+}) {
   const isDevContext = initialRole === "developer";
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [preferredCurrency, setPreferredCurrency] = useState(initialCurrency);
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -45,7 +57,7 @@ export function SignupForm({ initialRole }: { initialRole?: string }) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !email || !password) {
+    if (!name || !email || !password || !preferredCurrency) {
       setError("Please fill in all credentials.");
       return;
     }
@@ -66,6 +78,8 @@ export function SignupForm({ initialRole }: { initialRole?: string }) {
         data: {
           full_name: name,
           role,
+          preferred_currency: preferredCurrency,
+          country_code: initialCountryCode,
         },
         emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
@@ -223,6 +237,35 @@ export function SignupForm({ initialRole }: { initialRole?: string }) {
                         required
                       />
                     </div>
+                  </div>
+
+                  {/* Password input */}
+                  <div className="space-y-1">
+                    <label htmlFor="preferred-currency" className="text-xs font-bold text-navy-mid/80 tracking-wide uppercase font-ui">
+                      Your currency
+                    </label>
+                    <div className="relative">
+                      <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-muted-foreground/60">
+                        <CircleDollarSign className="size-4.5" />
+                      </span>
+                      <select
+                        id="preferred-currency"
+                        name="preferred-currency"
+                        value={preferredCurrency}
+                        onChange={(event) => setPreferredCurrency(event.target.value)}
+                        className={`w-full min-h-11 appearance-none rounded-xl border border-border-strong bg-white/60 pl-10.5 pr-10 text-sm text-navy transition-all focus:bg-white focus:outline-none focus:ring-2 ${theme.inputFocus}`}
+                        required
+                      >
+                        {currencies.map((currency) => (
+                          <option key={currency.code} value={currency.code}>
+                            {currency.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <p className="text-[11px] leading-4 text-muted-foreground">
+                      Used for project checkout or talent payout amounts. You can change it later.
+                    </p>
                   </div>
 
                   {/* Password input */}

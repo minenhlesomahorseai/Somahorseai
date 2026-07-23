@@ -7,6 +7,8 @@ export interface Profile {
   email: string | null;
   role: UserRole;
   onboarding_status: OnboardingStatus;
+  preferred_currency: string;
+  country_code: string | null;
 }
 
 export interface ClientOnboarding {
@@ -55,6 +57,51 @@ export interface TalentOnboarding {
   admin_notes: string | null;
   welcome_email_sent: boolean;
   availability_status: "available" | "unavailable";
+}
+
+export type InterviewScheduleStatus =
+  | "awaiting_availability"
+  | "negotiating"
+  | "confirmed"
+  | "completed"
+  | "cancelled";
+
+export type InterviewProposalStatus =
+  | "pending"
+  | "accepted"
+  | "rejected"
+  | "superseded";
+
+export interface InterviewSchedule {
+  id: string;
+  talent_id: string;
+  status: InterviewScheduleStatus;
+  timezone: string;
+  meeting_url: string | null;
+  confirmed_proposal_id: string | null;
+  confirmed_at: string | null;
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InterviewProposal {
+  id: string;
+  schedule_id: string;
+  proposed_by: string;
+  proposer_role: "admin" | "talent";
+  starts_at: string;
+  ends_at: string;
+  status: InterviewProposalStatus;
+  note: string | null;
+  responded_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InterviewSchedulingData {
+  schedule: InterviewSchedule | null;
+  proposals: InterviewProposal[];
 }
 
 // ---------------------------------------------------------------------------

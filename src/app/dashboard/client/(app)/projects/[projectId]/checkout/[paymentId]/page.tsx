@@ -3,6 +3,7 @@ import { ArrowLeft, ShieldCheck } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 
 import { loadClientSession } from "@/lib/dashboard/session";
+import { formatMinorMoney } from "@/lib/currency/config";
 import { paddleClientToken, publicPaddleEnvironment } from "@/lib/payments/paddle";
 import { formatZar } from "@/lib/projects/pricing";
 import { createClient } from "@/lib/supabase/server";
@@ -20,7 +21,7 @@ export default async function WorkspaceCheckoutPage({
   const [{ data: payment }, { data: project }] = await Promise.all([
     supabase
       .from("payments")
-      .select("id, project_id, amount, currency, status, provider_transaction_id, description")
+      .select("id, project_id, amount, currency, status, provider_transaction_id, description, presentment_amount_minor, presentment_currency")
       .eq("id", paymentId)
       .eq("project_id", projectId)
       .eq("client_id", userId)
@@ -30,6 +31,11 @@ export default async function WorkspaceCheckoutPage({
   if (!payment || !project) notFound();
   if (payment.status === "paid") redirect(`/dashboard/client/projects/${projectId}`);
   const token = paddleClientToken();
+  const amountDue =
+    formatMinorMoney(
+      payment.presentment_amount_minor,
+      payment.presentment_currency
+    ) ?? formatZar(Number(payment.amount));
 
   return (
     <div className="space-y-5">
@@ -45,8 +51,8 @@ export default async function WorkspaceCheckoutPage({
           <p className="mt-2 text-sm leading-6 text-muted-foreground">{payment.description ?? "Project delivery payment"}</p>
           <div className="mt-6 rounded-3xl bg-navy p-5 text-white shadow-glow">
             <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/55">Amount due</p>
-            <p className="mt-1 font-display text-4xl font-bold">{formatZar(Number(payment.amount))}</p>
-            <p className="mt-2 text-xs leading-5 text-white/60">Paddle will issue the transaction invoice after payment is verified.</p>
+            <p className="mt-1 font-display text-4xl font-bold">{amountDue}</p>
+            <p className="mt-2 text-xs leading-5 text-white/60">Project amount before any applicable tax. Paddle will show tax in checkout and issue the final invoice.</p>
           </div>
           <div className="mt-5 rounded-2xl bg-blue-vivid/8 p-4 text-xs leading-5 text-navy-mid">This payment is recorded against the project ledger and automatically creates the team&apos;s 60% earnings allocation.</div>
         </section>

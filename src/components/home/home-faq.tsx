@@ -8,7 +8,7 @@ const FAQS = [
   {
     question: "How does the AI scope my project?",
     answer:
-      "You describe your agricultural problem in plain language — the same way you'd explain it to a colleague. Our Intake Agent interviews you, structures the requirements into milestones, and returns a fixed, priced scope in ZAR before any work begins.",
+      "You describe your agricultural problem in plain language — the same way you'd explain it to a colleague. Our Intake Agent interviews you, structures the requirements into milestones, and returns a fixed, priced scope in your saved currency before any work begins.",
   },
   {
     question: "Who actually builds the software?",

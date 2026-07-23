@@ -8,7 +8,9 @@ export async function fetchProfile(
 ): Promise<Profile | null> {
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, full_name, email, role, onboarding_status")
+    .select(
+      "id, full_name, email, role, onboarding_status, preferred_currency, country_code"
+    )
     .eq("id", userId)
     .maybeSingle();
 

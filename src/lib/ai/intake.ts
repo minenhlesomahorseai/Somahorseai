@@ -125,6 +125,8 @@ function contextBlock(context: ClientContext): string {
     context.problem ? `Onboarding problem: ${context.problem}` : null,
     context.timeline ? `Initial timeline: ${context.timeline}` : null,
     context.budgetRange ? `Initial budget: ${context.budgetRange}` : null,
+    context.countryCode ? `Client country code: ${context.countryCode}` : null,
+    `Client display/payment preference: ${context.preferredCurrency}`,
   ]
     .filter(Boolean)
     .join("\n");
@@ -143,6 +145,11 @@ You turn an enterprise's operational problem into a buildable, commercially hone
 
 KNOWN CLIENT CONTEXT
 ${contextBlock(context) || "No prior onboarding context."}
+
+Currency rule: project pricing fields remain canonical ZAR accounting values.
+The application converts and locks the client-facing checkout separately using
+the saved currency above. Never relabel a ZAR number with another currency
+symbol and never invent an exchange rate in the conversation.
 
 SOLUTION TYPES
 - traceability: farm-to-retailer origin, movement, proof, and visibility

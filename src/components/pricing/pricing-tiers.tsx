@@ -8,7 +8,6 @@ const EASE = [0.16, 1, 0.3, 1] as const;
 
 const BUDGETS = [
   {
-    range: "Under R250k",
     name: "Proof of concept",
     description: "Validate one important workflow before committing to a larger platform.",
     icon: FlaskConical,
@@ -16,7 +15,6 @@ const BUDGETS = [
     accent: "bg-blue-mist text-blue-vivid",
   },
   {
-    range: "R250k–R1m",
     name: "Focused build",
     description: "Turn a proven need into a working product for a defined group of users.",
     icon: Workflow,
@@ -24,7 +22,6 @@ const BUDGETS = [
     accent: "bg-talent-pale text-talent-blue",
   },
   {
-    range: "R1m–R2.5m",
     name: "Full platform",
     description: "Connect teams, complex workflows, reporting, and ongoing operations.",
     icon: Boxes,
@@ -32,7 +29,6 @@ const BUDGETS = [
     accent: "bg-accent-teal/10 text-accent-teal",
   },
   {
-    range: "R2.5m+",
     name: "National scale",
     description: "Design for broad adoption, governance, resilience, and continuous delivery.",
     icon: Building2,
@@ -41,7 +37,13 @@ const BUDGETS = [
   },
 ] as const;
 
-export function PricingTiers({ ctaHref }: { ctaHref: string }) {
+export function PricingTiers({
+  ctaHref,
+  budgetRanges,
+}: {
+  ctaHref: string;
+  budgetRanges: string[];
+}) {
   return (
     <section id="budget-guide" className="scroll-mt-28 px-4 py-20 sm:px-6 sm:py-28 lg:px-8">
       <div className="mx-auto max-w-7xl">
@@ -69,7 +71,7 @@ export function PricingTiers({ ctaHref }: { ctaHref: string }) {
                   <span className={`grid size-11 place-items-center rounded-2xl ${budget.accent}`}>
                     <Icon className="size-5" aria-hidden />
                   </span>
-                  <span className="rounded-full border border-border bg-white px-3 py-1 text-[11px] font-bold text-navy">{budget.range}</span>
+                  <span className="rounded-full border border-border bg-white px-3 py-1 text-[11px] font-bold text-navy">{budgetRanges[index]}</span>
                 </div>
                 <h3 className="mt-6 font-display text-2xl font-bold text-navy">{budget.name}</h3>
                 <p className="mt-3 min-h-16 text-sm leading-6 text-muted-foreground">{budget.description}</p>

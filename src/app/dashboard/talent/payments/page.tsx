@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowUpRight, CheckCircle2, CircleDollarSign, Clock3, ReceiptText, ShieldCheck } from "lucide-react";
 
 import { TalentEmptyState, TalentGlassCard, TalentPageHeader, TalentSectionTitle } from "@/components/dashboard/talent-ui";
+import { formatMinorMoney } from "@/lib/currency/config";
 import { loadTalentSession } from "@/lib/dashboard/talent";
 import { formatZar } from "@/lib/projects/pricing";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -17,6 +18,8 @@ interface TalentEarningRow {
   status: "owed" | "paid" | "held" | "cancelled";
   paid_at: string | null;
   payout_reference: string | null;
+  payout_amount_minor: number | null;
+  payout_currency: string | null;
   created_at: string;
   projects: { title: string } | Array<{ title: string }> | null;
   payments: { kind: string; description: string | null; paid_at: string | null } | Array<{ kind: string; description: string | null; paid_at: string | null }> | null;
@@ -28,13 +31,28 @@ export default async function TalentPaymentsPage() {
   if (!admin) throw new Error("SUPABASE_SERVICE_ROLE_KEY is required for the talent earnings ledger");
   const { data } = await admin
     .from("talent_earnings")
-    .select("id, project_id, payment_id, client_payment_amount, talent_pool_amount, amount_owed, share_percent, status, paid_at, payout_reference, created_at, projects(title), payments(kind, description, paid_at)")
+    .select("id, project_id, payment_id, client_payment_amount, talent_pool_amount, amount_owed, share_percent, status, paid_at, payout_reference, payout_amount_minor, payout_currency, created_at, projects(title), payments(kind, description, paid_at)")
     .eq("talent_id", userId)
     .order("created_at", { ascending: false });
   const earnings = (data ?? []) as unknown as TalentEarningRow[];
   const total = earnings.filter((item) => !["cancelled", "held"].includes(item.status)).reduce((sum, item) => sum + Number(item.amount_owed), 0);
   const owed = earnings.filter((item) => item.status === "owed").reduce((sum, item) => sum + Number(item.amount_owed), 0);
   const paid = earnings.filter((item) => item.status === "paid").reduce((sum, item) => sum + Number(item.amount_owed), 0);
+  const receivedByCurrency = new Map<string, number>();
+  for (const earning of earnings.filter((item) => item.status === "paid")) {
+    const currency = earning.payout_currency ?? "ZAR";
+    const amountMinor =
+      earning.payout_amount_minor ?? Number(earning.amount_owed) * 100;
+    receivedByCurrency.set(
+      currency,
+      (receivedByCurrency.get(currency) ?? 0) + amountMinor
+    );
+  }
+  const received =
+    [...receivedByCurrency.entries()]
+      .map(([currency, amountMinor]) => formatMinorMoney(amountMinor, currency))
+      .filter(Boolean)
+      .join(" + ") || formatZar(paid);
 
   return (
     <div className="space-y-6">
@@ -42,7 +60,7 @@ export default async function TalentPaymentsPage() {
 
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="talent-glass-dark rounded-[1.75rem] p-5 text-white sm:p-6">
-          <div className="flex items-center justify-between"><p className="text-xs font-semibold text-white/55">Total earned</p><CircleDollarSign className="size-5 text-accent-teal" aria-hidden /></div>
+          <div className="flex items-center justify-between"><p className="text-xs font-semibold text-white/55">Base earnings (ZAR)</p><CircleDollarSign className="size-5 text-accent-teal" aria-hidden /></div>
           <p className="mt-3 font-display text-3xl font-bold">{formatZar(total)}</p>
           <p className="mt-1 text-[11px] text-white/45">Across {earnings.length} allocations</p>
         </div>
@@ -53,7 +71,7 @@ export default async function TalentPaymentsPage() {
         </div>
         <div className="talent-glass rounded-[1.75rem] p-5 sm:p-6">
           <div className="flex items-center justify-between"><p className="text-xs font-semibold text-muted-foreground">Received</p><CheckCircle2 className="size-5 text-accent-teal" aria-hidden /></div>
-          <p className="mt-3 font-display text-3xl font-bold text-navy">{formatZar(paid)}</p>
+          <p className="mt-3 font-display text-3xl font-bold text-navy">{received}</p>
           <p className="mt-1 text-[11px] text-muted-foreground">Marked paid by control room</p>
         </div>
       </div>
@@ -73,7 +91,7 @@ export default async function TalentPaymentsPage() {
                     <p className="mt-1 text-[10px] text-muted-foreground">Client paid {formatZar(earning.client_payment_amount)} · 60% pool {formatZar(earning.talent_pool_amount)} · Your share {earning.share_percent}%</p>
                     {earning.payout_reference ? <p className="mt-1 text-[10px] font-semibold text-accent-teal">Reference: {earning.payout_reference}</p> : null}
                   </div>
-                  <div className="flex items-center justify-between gap-4 sm:justify-end"><p className="font-display text-xl font-bold text-navy">{formatZar(earning.amount_owed)}</p><Link href={`/dashboard/talent/projects/${earning.project_id}`} className="grid size-9 place-items-center rounded-full border border-border bg-white text-navy-mid" aria-label="Open project workspace"><ArrowUpRight className="size-4" aria-hidden /></Link></div>
+                  <div className="flex items-center justify-between gap-4 sm:justify-end"><div className="text-right"><p className="font-display text-xl font-bold text-navy">{formatMinorMoney(earning.payout_amount_minor, earning.payout_currency) ?? formatZar(earning.amount_owed)}</p>{earning.payout_amount_minor != null ? <p className="text-[10px] text-muted-foreground">Base value {formatZar(earning.amount_owed)}</p> : null}</div><Link href={`/dashboard/talent/projects/${earning.project_id}`} className="grid size-9 place-items-center rounded-full border border-border bg-white text-navy-mid" aria-label="Open project workspace"><ArrowUpRight className="size-4" aria-hidden /></Link></div>
                 </div>
               );
             })}

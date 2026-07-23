@@ -8,7 +8,10 @@ import type { TalentStage } from "@/lib/auth/types";
 import {
   sendAssessmentInvite,
   sendTalentPassed,
+  sendTalentApproved,
   sendTalentRejected,
+  retryFailedEmails,
+  type SendResult,
 } from "@/lib/email";
 import {
   createAssessmentForTalent,
@@ -34,7 +37,7 @@ export async function setTalentStage(
   fromStage: TalentStage,
   nextStage: TalentStage,
   notes?: string
-) {
+): Promise<{ email: SendResult | null }> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -51,6 +54,7 @@ export async function setTalentStage(
 
   const adminClient = createAdminClient() ?? supabase;
   const contact = await fetchTalentContact(adminClient, talentId);
+  let scheduleId: string | null = null;
 
   // Approving to assessment: generate the AI assessment FIRST so we never
   // advance the stage (and email a dead link) when generation fails.
@@ -83,7 +87,49 @@ export async function setTalentStage(
     }
   }
 
-  const { error } = await adminClient
+  if (nextStage === "interview") {
+    const { data: schedule, error: scheduleError } = await adminClient
+      .from("interview_schedules")
+      .upsert(
+        { talent_id: talentId, status: "awaiting_availability" },
+        { onConflict: "talent_id" }
+      )
+      .select("id")
+      .single();
+    if (scheduleError || !schedule) {
+      throw new Error(
+        scheduleError?.message ?? "Could not create the interview workspace"
+      );
+    }
+    scheduleId = schedule.id;
+  }
+
+  if (fromStage === "interview_review" && nextStage === "approved") {
+    const { data: schedule } = await adminClient
+      .from("interview_schedules")
+      .select("status, confirmed_proposal_id")
+      .eq("talent_id", talentId)
+      .maybeSingle();
+    if (
+      !schedule ||
+      schedule.status !== "confirmed" ||
+      !schedule.confirmed_proposal_id
+    ) {
+      throw new Error("Confirm an interview time before approving this talent.");
+    }
+    const { data: confirmed } = await adminClient
+      .from("interview_proposals")
+      .select("starts_at")
+      .eq("id", schedule.confirmed_proposal_id)
+      .maybeSingle();
+    if (!confirmed || new Date(confirmed.starts_at).getTime() > Date.now()) {
+      throw new Error(
+        "The confirmed interview has not happened yet. Approve the candidate after the interview."
+      );
+    }
+  }
+
+  const { data: updated, error } = await adminClient
     .from("talent_onboarding")
     .update({
       stage: nextStage,
@@ -91,39 +137,86 @@ export async function setTalentStage(
       reviewed_at: new Date().toISOString(),
     })
     .eq("id", talentId)
-    .eq("stage", fromStage);
+    .eq("stage", fromStage)
+    .select("id")
+    .maybeSingle();
 
   if (error) {
     throw new Error(error.message);
   }
+  if (!updated) {
+    throw new Error("This application changed before your action completed. Refresh and try again.");
+  }
 
-  // Fire the appropriate transactional email (best-effort, never throws).
+  let emailResult: SendResult | null = null;
   if (nextStage === "assessment" && assessmentToken) {
-    const res = await sendAssessmentInvite({
+    emailResult = await sendAssessmentInvite({
       to: contact.email,
       firstName: contact.firstName,
+      talentId,
       assessmentToken,
       timeLimitMinutes: assessmentMinutes,
     });
-    console.log(`[admin action] sendAssessmentInvite result for ${contact.email}:`, res);
-  } else if (nextStage === "interview") {
-    const res = await sendTalentPassed({
+  } else if (nextStage === "interview" && scheduleId) {
+    emailResult = await sendTalentPassed({
       to: contact.email,
       firstName: contact.firstName,
+      talentId,
+      scheduleId,
       notes,
     });
-    console.log(`[admin action] sendTalentPassed result for ${contact.email}:`, res);
   } else if (nextStage === "rejected") {
-    const res = await sendTalentRejected({
+    if (
+      fromStage !== "pending_review" &&
+      fromStage !== "assessment_review" &&
+      fromStage !== "interview_review"
+    ) {
+      throw new Error(`Cannot reject an application from ${fromStage}`);
+    }
+    emailResult = await sendTalentRejected({
       to: contact.email,
       firstName: contact.firstName,
+      talentId,
+      fromStage,
       reason: notes,
     });
-    console.log(`[admin action] sendTalentRejected result for ${contact.email}:`, res);
+  } else if (nextStage === "approved") {
+    emailResult = await sendTalentApproved({
+      to: contact.email,
+      firstName: contact.firstName,
+      talentId,
+    });
+    await adminClient
+      .from("interview_schedules")
+      .update({
+        status: "completed",
+        completed_at: new Date().toISOString(),
+      })
+      .eq("talent_id", talentId);
   }
 
   revalidatePath("/admin");
   revalidatePath(`/admin/assessment/${talentId}`);
+  revalidatePath(`/admin/interviews/${talentId}`);
+  revalidatePath("/onboarding/talent");
+  return { email: emailResult };
+}
+
+export async function retryEmailDeliveries(): Promise<{
+  processed: number;
+  sent: number;
+  failed: number;
+}> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!(await isAdminUser(supabase, user))) {
+    throw new Error("Not authorized");
+  }
+  const result = await retryFailedEmails();
+  revalidatePath("/admin");
+  return result;
 }
 
 async function fetchTalentContact(

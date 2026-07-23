@@ -7,6 +7,7 @@ import { fetchAvailableDevelopers } from "@/lib/dashboard/data";
 import {
   createDepositTransaction,
   paddleCheckoutConfigured,
+  type LocalizedPaddleTransaction,
 } from "@/lib/payments/paddle";
 import { normalizeIntakeState, normalizeProposal } from "@/lib/projects/pricing";
 import type { ProposedTeamMember } from "@/lib/projects/types";
@@ -42,6 +43,11 @@ export async function prepareProjectCheckout(
   if (!admin) {
     return { ok: false, error: "Secure project creation is not configured." };
   }
+  const { data: currencyProfile } = await admin
+    .from("profiles")
+    .select("preferred_currency, country_code")
+    .eq("id", user.id)
+    .maybeSingle();
 
   const { data: conversation, error: conversationError } = await supabase
     .from("intake_conversations")
@@ -79,18 +85,16 @@ export async function prepareProjectCheckout(
       };
     }
     try {
-      const transaction = await createDepositTransaction({
+      const localized = await createDepositTransaction({
         projectId: existing.id,
         conversationId: conversation.id,
         clientId: user.id,
         title: existing.title,
         depositZar: Number(existing.deposit_amount),
+        preferredCurrency: currencyProfile?.preferred_currency,
+        countryCode: currencyProfile?.country_code,
       });
-      const { error: attachError } = await admin.rpc("attach_checkout_transaction", {
-        p_project_id: existing.id,
-        p_transaction_id: transaction.id,
-      });
-      if (attachError) throw new Error(attachError.message);
+      await attachLocalizedDeposit(admin, existing.id, localized);
       return {
         ok: true,
         projectId: existing.id,
@@ -172,18 +176,16 @@ export async function prepareProjectCheckout(
 
   if (!project.paddle_transaction_id) {
     try {
-      const transaction = await createDepositTransaction({
+      const localized = await createDepositTransaction({
         projectId,
         conversationId: conversation.id,
         clientId: user.id,
         title: project.title,
         depositZar: Number(project.deposit_amount),
+        preferredCurrency: currencyProfile?.preferred_currency,
+        countryCode: currencyProfile?.country_code,
       });
-      const { error: attachError } = await admin.rpc("attach_checkout_transaction", {
-        p_project_id: projectId,
-        p_transaction_id: transaction.id,
-      });
-      if (attachError) throw new Error(attachError.message);
+      await attachLocalizedDeposit(admin, projectId, localized);
     } catch (error) {
       console.error("Could not create Paddle checkout", error);
       return {
@@ -202,4 +204,24 @@ export async function prepareProjectCheckout(
     projectId,
     checkoutPath: `/dashboard/client/checkout/${projectId}`,
   };
+}
+
+async function attachLocalizedDeposit(
+  admin: NonNullable<ReturnType<typeof createAdminClient>>,
+  projectId: string,
+  localized: LocalizedPaddleTransaction
+) {
+  const { transaction, quote } = localized;
+  const { error } = await admin.rpc("attach_localized_checkout_transaction", {
+    p_project_id: projectId,
+    p_transaction_id: transaction.id,
+    p_presentment_amount_minor: quote.presentmentAmountMinor,
+    p_presentment_currency: quote.presentmentCurrency,
+    p_requested_currency: quote.requestedCurrency,
+    p_country_code: quote.countryCode,
+    p_fx_rate: quote.fxRate,
+    p_fx_source: quote.fxSource,
+    p_fx_quoted_at: quote.quotedAt,
+  });
+  if (error) throw new Error(error.message);
 }
